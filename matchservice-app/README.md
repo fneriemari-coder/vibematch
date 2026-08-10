@@ -4,16 +4,25 @@ Cyber-Premium "VIBE MATCH" client: swipe matchmaking (Cloud/Local/B2B),
 Discovery Feed with AI intent search, real-time chat, wallet/receivables
 advance, and a locale-aware Premium paywall.
 
-## ⚠️ Not yet verified against the Flutter toolchain
+## Live web preview
 
-This project was authored in an environment **without the Flutter SDK
-installed**, so none of the following have been run against this code:
-`flutter pub get`, `flutter analyze`, `flutter build`, or any widget/golden
-test. All relative imports were verified to resolve to real files, and every
-`package:` import used in the source is declared in `pubspec.yaml`, but that
-is a structural check, not a compile guarantee — expect to fix a handful of
-API-surface mismatches (Dart/Flutter/plugin version drift) on the first real
-`flutter pub get && flutter analyze`.
+`main` auto-deploys a `flutter build web --release` to GitHub Pages on every
+push (`.github/workflows/deploy-web.yml`): **https://fneriemari-coder.github.io/vibematch/**
+
+UI-only — `API_BASE_URL` there is a placeholder until a backend is actually
+hosted somewhere reachable, so anything that hits the API (login, feed data,
+payments, chat) will show a network error. Every screen renders.
+
+## Verified against the real Flutter toolchain (CI, not locally)
+
+This project was originally authored in a sandbox **without the Flutter SDK
+installed**. It's since been run for real in GitHub Actions
+(`.github/workflows/ci.yml`) — `flutter pub get`, `flutter analyze`,
+`dart format --set-exit-if-changed`, and `flutter build web` are all green.
+Native builds (`flutter build apk` / `ipa`) haven't been exercised — CI only
+targets web — so expect the usual platform-specific plumbing (signing,
+`google-services.json`, provisioning profiles) on the first real mobile
+build.
 
 ## Setup
 
