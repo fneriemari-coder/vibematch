@@ -7,7 +7,6 @@ import '../../data/models/wallet_models.dart';
 import '../../data/repositories/wallet_repository.dart';
 import '../../logic/wallet/wallet_cubit.dart';
 import '../widgets/pulsing_status_dot.dart';
-import '../widgets/score_badge.dart';
 import '../widgets/vibe_glass_card.dart';
 
 /// Fintech-grade wallet dashboard: glowing K-Score header, glassmorphism

@@ -6,7 +6,6 @@ import '../../data/models/feed_models.dart';
 import '../../logic/swipe/swipe_cubit.dart';
 import '../widgets/swipe_card.dart';
 import 'match_success_screen.dart';
-import 'paywall_screen.dart';
 
 class SwipeDeckScreen extends StatefulWidget {
   const SwipeDeckScreen({super.key});

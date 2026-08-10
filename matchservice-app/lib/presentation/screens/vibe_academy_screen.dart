@@ -58,9 +58,9 @@ class _VibeAcademyScreenState extends State<VibeAcademyScreen> {
             return const Center(child: CircularProgressIndicator(color: VibeMatchColors.neonPrimary));
           }
           if (snapshot.hasError || !snapshot.hasData) {
-            return const Center(
+            return Center(
               child: Padding(
-                padding: EdgeInsets.all(24),
+                padding: const EdgeInsets.all(24),
                 child: Text('Não foi possível carregar este curso.', style: VibeMatchTextStyles.body),
               ),
             );

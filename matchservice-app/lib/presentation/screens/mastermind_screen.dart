@@ -81,9 +81,9 @@ class _MastermindScreenState extends State<MastermindScreen> {
             final sessions = snapshot.data ?? const [];
             if (sessions.isEmpty) {
               return ListView(
-                children: const [
+                children: [
                   Padding(
-                    padding: EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(24),
                     child: Text('Nenhuma sessão agendada no momento.', style: VibeMatchTextStyles.body),
                   ),
                 ],
