@@ -12,12 +12,17 @@ class AcademyRepository {
   }
 
   Future<CourseConnections> getCourseConnections(String courseId) async {
-    final response = await _client.dio.get('/academy/course-connections/$courseId');
+    final response = await _client.dio.get(
+      '/academy/course-connections/$courseId',
+    );
     return CourseConnections.fromJson(response.data as Map<String, dynamic>);
   }
 
   Future<String?> buyCourse(String courseId) async {
-    final response = await _client.dio.post('/academy/buy-course', data: {'courseId': courseId});
+    final response = await _client.dio.post(
+      '/academy/buy-course',
+      data: {'courseId': courseId},
+    );
     return (response.data as Map<String, dynamic>)['checkoutUrl'] as String?;
   }
 }

@@ -6,10 +6,10 @@ enum MediaPurpose { discoveryPost, profilePhoto, chatAttachment }
 
 extension on MediaPurpose {
   String get apiValue => switch (this) {
-        MediaPurpose.discoveryPost => 'discovery_post',
-        MediaPurpose.profilePhoto => 'profile_photo',
-        MediaPurpose.chatAttachment => 'chat_attachment',
-      };
+    MediaPurpose.discoveryPost => 'discovery_post',
+    MediaPurpose.profilePhoto => 'profile_photo',
+    MediaPurpose.chatAttachment => 'chat_attachment',
+  };
 }
 
 /// Presigns a direct-to-S3 upload (POST /media/presigned-upload, JWT-authed)
@@ -24,10 +24,10 @@ class MediaRepository {
   /// this upload belongs to (DiscoveryPost, UserProfile, ChatMessage).
   Future<String> uploadPickedFile(XFile file, MediaPurpose purpose) async {
     final contentType = file.mimeType ?? _guessContentType(file.name);
-    final presign = await _client.dio.post('/media/presigned-upload', data: {
-      'contentType': contentType,
-      'purpose': purpose.apiValue,
-    });
+    final presign = await _client.dio.post(
+      '/media/presigned-upload',
+      data: {'contentType': contentType, 'purpose': purpose.apiValue},
+    );
 
     final uploadUrl = presign.data['uploadUrl'] as String;
     final publicUrl = presign.data['publicUrl'] as String;

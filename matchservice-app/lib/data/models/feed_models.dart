@@ -2,10 +2,10 @@ enum SwipeMode { cloud, local, b2b }
 
 extension SwipeModeApi on SwipeMode {
   String get apiValue => switch (this) {
-        SwipeMode.cloud => 'CLOUD',
-        SwipeMode.local => 'LOCAL',
-        SwipeMode.b2b => 'B2B',
-      };
+    SwipeMode.cloud => 'CLOUD',
+    SwipeMode.local => 'LOCAL',
+    SwipeMode.b2b => 'B2B',
+  };
 }
 
 class DiscoveryFeedItem {
@@ -37,7 +37,8 @@ class DiscoveryFeedItem {
 
   bool get isVideo => mediaUrl != null && videoDurationSeconds != null;
 
-  factory DiscoveryFeedItem.fromJson(Map<String, dynamic> json) => DiscoveryFeedItem(
+  factory DiscoveryFeedItem.fromJson(Map<String, dynamic> json) =>
+      DiscoveryFeedItem(
         postId: json['postId'] as String,
         title: json['title'] as String,
         contentText: json['contentText'] as String? ?? '',
@@ -45,8 +46,11 @@ class DiscoveryFeedItem {
         videoDurationSeconds: json['videoDurationSeconds'] as int?,
         likesCount: json['likesCount'] as int? ?? 0,
         viewsCount: json['viewsCount'] as int? ?? 0,
-        creatorId: (json['creator'] as Map<String, dynamic>?)?['id'] as String? ?? '',
-        creatorName: (json['creator'] as Map<String, dynamic>?)?['name'] as String? ?? '',
+        creatorId:
+            (json['creator'] as Map<String, dynamic>?)?['id'] as String? ?? '',
+        creatorName:
+            (json['creator'] as Map<String, dynamic>?)?['name'] as String? ??
+            '',
         skillTagId: json['skillTagId'] as String?,
         source: json['source'] as String? ?? 'CLOUD',
       );
@@ -61,8 +65,11 @@ class DiscoveryFeedPage {
   final List<DiscoveryFeedItem> items;
   final String? nextCursor;
 
-  factory DiscoveryFeedPage.fromJson(Map<String, dynamic> json) => DiscoveryFeedPage(
-        items: (json['items'] as List).map((e) => DiscoveryFeedItem.fromJson(e as Map<String, dynamic>)).toList(),
+  factory DiscoveryFeedPage.fromJson(Map<String, dynamic> json) =>
+      DiscoveryFeedPage(
+        items: (json['items'] as List)
+            .map((e) => DiscoveryFeedItem.fromJson(e as Map<String, dynamic>))
+            .toList(),
         nextCursor: json['nextCursor'] as String?,
       );
 }
@@ -76,7 +83,8 @@ class AiTranslateResult {
   final List<String> interpretedNeeds;
   final String suggestedMode; // 'CLOUD' | 'LOCAL'
 
-  factory AiTranslateResult.fromJson(Map<String, dynamic> json) => AiTranslateResult(
+  factory AiTranslateResult.fromJson(Map<String, dynamic> json) =>
+      AiTranslateResult(
         interpretedNeeds: (json['interpretedNeeds'] as List).cast<String>(),
         suggestedMode: json['suggestedMode'] as String,
       );

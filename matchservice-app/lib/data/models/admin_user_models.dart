@@ -1,22 +1,20 @@
 enum AccountStatus { active, underReview, suspended }
 
-AccountStatus accountStatusFromJson(String value) => AccountStatus.values.firstWhere(
-      (s) => s.apiValue == value,
-      orElse: () => AccountStatus.active,
-    );
+AccountStatus accountStatusFromJson(String value) => AccountStatus.values
+    .firstWhere((s) => s.apiValue == value, orElse: () => AccountStatus.active);
 
 extension AccountStatusApi on AccountStatus {
   String get apiValue => switch (this) {
-        AccountStatus.active => 'ACTIVE',
-        AccountStatus.underReview => 'UNDER_REVIEW',
-        AccountStatus.suspended => 'SUSPENDED',
-      };
+    AccountStatus.active => 'ACTIVE',
+    AccountStatus.underReview => 'UNDER_REVIEW',
+    AccountStatus.suspended => 'SUSPENDED',
+  };
 
   String get label => switch (this) {
-        AccountStatus.active => 'Ativa',
-        AccountStatus.underReview => 'Em revisão',
-        AccountStatus.suspended => 'Banida',
-      };
+    AccountStatus.active => 'Ativa',
+    AccountStatus.underReview => 'Em revisão',
+    AccountStatus.suspended => 'Banida',
+  };
 }
 
 class AdminUserSummary {
@@ -44,7 +42,8 @@ class AdminUserSummary {
   final DateTime? deletedAt;
   final String name;
 
-  factory AdminUserSummary.fromJson(Map<String, dynamic> json) => AdminUserSummary(
+  factory AdminUserSummary.fromJson(Map<String, dynamic> json) =>
+      AdminUserSummary(
         id: json['id'] as String,
         email: json['email'] as String,
         role: json['role'] as String,
@@ -53,21 +52,33 @@ class AdminUserSummary {
         emailVerified: json['emailVerified'] as bool? ?? false,
         walletBalance: json['walletBalance']?.toString() ?? '0',
         country: json['country'] as String? ?? '',
-        deletedAt: json['deletedAt'] != null ? DateTime.parse(json['deletedAt'] as String) : null,
-        name: (json['profile'] as Map<String, dynamic>?)?['name'] as String? ?? '(sem perfil)',
+        deletedAt: json['deletedAt'] != null
+            ? DateTime.parse(json['deletedAt'] as String)
+            : null,
+        name:
+            (json['profile'] as Map<String, dynamic>?)?['name'] as String? ??
+            '(sem perfil)',
       );
 }
 
 class AdminUserListResult {
-  const AdminUserListResult({required this.users, required this.total, required this.limit, required this.offset});
+  const AdminUserListResult({
+    required this.users,
+    required this.total,
+    required this.limit,
+    required this.offset,
+  });
 
   final List<AdminUserSummary> users;
   final int total;
   final int limit;
   final int offset;
 
-  factory AdminUserListResult.fromJson(Map<String, dynamic> json) => AdminUserListResult(
-        users: (json['users'] as List).map((e) => AdminUserSummary.fromJson(e as Map<String, dynamic>)).toList(),
+  factory AdminUserListResult.fromJson(Map<String, dynamic> json) =>
+      AdminUserListResult(
+        users: (json['users'] as List)
+            .map((e) => AdminUserSummary.fromJson(e as Map<String, dynamic>))
+            .toList(),
         total: json['total'] as int,
         limit: json['limit'] as int,
         offset: json['offset'] as int,

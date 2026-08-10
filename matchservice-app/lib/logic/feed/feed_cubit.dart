@@ -12,7 +12,8 @@ class FeedInitial extends FeedState {
 
 class FeedLoading extends FeedState {
   const FeedLoading(this.items);
-  final List<DiscoveryFeedItem> items; // previous page, kept visible during infinite-scroll load
+  final List<DiscoveryFeedItem>
+  items; // previous page, kept visible during infinite-scroll load
 }
 
 class FeedLoaded extends FeedState {
@@ -53,7 +54,11 @@ class FeedCubit extends Cubit<FeedState> {
     _lng = lng;
     emit(const FeedLoading([]));
     try {
-      final page = await _repository.discover(lat: lat, lng: lng, limit: _pageSize);
+      final page = await _repository.discover(
+        lat: lat,
+        lng: lng,
+        limit: _pageSize,
+      );
       _items = page.items;
       _nextCursor = page.nextCursor;
       emit(FeedLoaded(_items, hasMore: _nextCursor != null));
@@ -83,7 +88,11 @@ class FeedCubit extends Cubit<FeedState> {
   Future<void> askAi(String rawInput) async {
     emit(FeedAiThinking(_items));
     try {
-      final result = await _repository.translateIntent(rawInput, lat: _lat, lng: _lng);
+      final result = await _repository.translateIntent(
+        rawInput,
+        lat: _lat,
+        lng: _lng,
+      );
       emit(FeedAiResult(result, _items));
     } catch (e) {
       emit(FeedError(e.toString()));

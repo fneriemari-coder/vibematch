@@ -60,7 +60,11 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: VibeMatchColors.background,
-      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, title: const Text('Usuários')),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: const Text('Usuários'),
+      ),
       body: Column(
         children: [
           Padding(
@@ -81,10 +85,14 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      _StatusChip(label: 'Todos', selected: _statusFilter == null, onTap: () {
-                        _statusFilter = null;
-                        _load();
-                      }),
+                      _StatusChip(
+                        label: 'Todos',
+                        selected: _statusFilter == null,
+                        onTap: () {
+                          _statusFilter = null;
+                          _load();
+                        },
+                      ),
                       for (final status in AccountStatus.values)
                         Padding(
                           padding: const EdgeInsets.only(left: 8),
@@ -108,13 +116,19 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
               future: _future,
               builder: (context, snapshot) {
                 if (snapshot.connectionState != ConnectionState.done) {
-                  return const Center(child: CircularProgressIndicator(color: VibeMatchColors.neonPrimary));
+                  return const Center(
+                    child: CircularProgressIndicator(
+                      color: VibeMatchColors.neonPrimary,
+                    ),
+                  );
                 }
                 if (snapshot.hasError) {
                   final isForbidden = snapshot.error.toString().contains('403');
                   return Center(
                     child: Text(
-                      isForbidden ? 'Acesso restrito a administradores.' : 'Erro: ${snapshot.error}',
+                      isForbidden
+                          ? 'Acesso restrito a administradores.'
+                          : 'Erro: ${snapshot.error}',
                       style: const TextStyle(color: VibeMatchColors.textLow),
                     ),
                   );
@@ -122,7 +136,10 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 final result = snapshot.data!;
                 if (result.users.isEmpty) {
                   return const Center(
-                    child: Text('Nenhum usuário encontrado.', style: TextStyle(color: VibeMatchColors.textLow)),
+                    child: Text(
+                      'Nenhum usuário encontrado.',
+                      style: TextStyle(color: VibeMatchColors.textLow),
+                    ),
                   );
                 }
                 return RefreshIndicator(
@@ -141,24 +158,42 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                               children: [
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Text(user.name, style: VibeMatchTextStyles.subheading),
-                                      Text(user.email, style: VibeMatchTextStyles.body, overflow: TextOverflow.ellipsis),
+                                      Text(
+                                        user.name,
+                                        style: VibeMatchTextStyles.subheading,
+                                      ),
+                                      Text(
+                                        user.email,
+                                        style: VibeMatchTextStyles.body,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                       const SizedBox(height: 4),
                                       Row(
                                         children: [
-                                          _StatusBadge(status: user.accountStatus),
+                                          _StatusBadge(
+                                            status: user.accountStatus,
+                                          ),
                                           if (user.identityVerified) ...[
                                             const SizedBox(width: 6),
-                                            const Icon(Icons.verified, size: 14, color: VibeMatchColors.neonPrimary),
+                                            const Icon(
+                                              Icons.verified,
+                                              size: 14,
+                                              color:
+                                                  VibeMatchColors.neonPrimary,
+                                            ),
                                           ],
                                         ],
                                       ),
                                     ],
                                   ),
                                 ),
-                                const Icon(Icons.chevron_right, color: VibeMatchColors.textLow),
+                                const Icon(
+                                  Icons.chevron_right,
+                                  color: VibeMatchColors.textLow,
+                                ),
                               ],
                             ),
                           ),
@@ -177,7 +212,11 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
 }
 
 class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.label, required this.selected, required this.onTap});
+  const _StatusChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   final String label;
   final bool selected;
@@ -191,7 +230,10 @@ class _StatusChip extends StatelessWidget {
       onSelected: (_) => onTap(),
       selectedColor: VibeMatchColors.neonPrimary,
       backgroundColor: VibeMatchColors.surface,
-      labelStyle: TextStyle(color: selected ? Colors.black : VibeMatchColors.textHigh, fontSize: 12),
+      labelStyle: TextStyle(
+        color: selected ? Colors.black : VibeMatchColors.textHigh,
+        fontSize: 12,
+      ),
     );
   }
 }
@@ -210,14 +252,28 @@ class _StatusBadge extends StatelessWidget {
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(color: color.withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
-      child: Text(status.label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        status.label,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
     );
   }
 }
 
 class _UserActionsSheet extends StatefulWidget {
-  const _UserActionsSheet({required this.user, required this.adminRepository, required this.onChanged});
+  const _UserActionsSheet({
+    required this.user,
+    required this.adminRepository,
+    required this.onChanged,
+  });
 
   final AdminUserSummary user;
   final AdminRepository adminRepository;
@@ -238,7 +294,9 @@ class _UserActionsSheetState extends State<_UserActionsSheet> {
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erro: $e')));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -252,7 +310,9 @@ class _UserActionsSheetState extends State<_UserActionsSheet> {
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erro: $e')));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -272,18 +332,27 @@ class _UserActionsSheetState extends State<_UserActionsSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(user.name, style: VibeMatchTextStyles.heading.copyWith(fontSize: 18)),
+          Text(
+            user.name,
+            style: VibeMatchTextStyles.heading.copyWith(fontSize: 18),
+          ),
           Text(user.email, style: VibeMatchTextStyles.body),
           const SizedBox(height: 20),
           if (_busy)
-            const Center(child: CircularProgressIndicator(color: VibeMatchColors.neonPrimary))
+            const Center(
+              child: CircularProgressIndicator(
+                color: VibeMatchColors.neonPrimary,
+              ),
+            )
           else ...[
             if (user.accountStatus != AccountStatus.suspended)
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton(
                   onPressed: () => _setStatus(AccountStatus.suspended),
-                  style: OutlinedButton.styleFrom(foregroundColor: Colors.redAccent),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.redAccent,
+                  ),
                   child: const Text('Banir usuário'),
                 ),
               ),

@@ -7,10 +7,10 @@ class AuthRepository {
   final DioClient _client;
 
   Future<AppUser> login(String email, String password) async {
-    final response = await _client.dio.post('/auth/login', data: {
-      'email': email,
-      'password': password,
-    });
+    final response = await _client.dio.post(
+      '/auth/login',
+      data: {'email': email, 'password': password},
+    );
     await _persistSession(response.data as Map<String, dynamic>);
     return AppUser.fromJson(response.data['user'] as Map<String, dynamic>);
   }
@@ -22,13 +22,16 @@ class AuthRepository {
     required String role,
     required String country,
   }) async {
-    final response = await _client.dio.post('/auth/register', data: {
-      'email': email,
-      'password': password,
-      'name': name,
-      'role': role,
-      'country': country,
-    });
+    final response = await _client.dio.post(
+      '/auth/register',
+      data: {
+        'email': email,
+        'password': password,
+        'name': name,
+        'role': role,
+        'country': country,
+      },
+    );
     await _persistSession(response.data as Map<String, dynamic>);
     return AppUser.fromJson(response.data['user'] as Map<String, dynamic>);
   }
@@ -52,8 +55,14 @@ class AuthRepository {
     return _client.dio.post('/auth/forgot-password', data: {'email': email});
   }
 
-  Future<void> resetPassword({required String token, required String newPassword}) {
-    return _client.dio.post('/auth/reset-password', data: {'token': token, 'newPassword': newPassword});
+  Future<void> resetPassword({
+    required String token,
+    required String newPassword,
+  }) {
+    return _client.dio.post(
+      '/auth/reset-password',
+      data: {'token': token, 'newPassword': newPassword},
+    );
   }
 
   Future<void> resendVerificationEmail() {

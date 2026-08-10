@@ -31,13 +31,16 @@ class SubscriptionCubit extends Cubit<SubscriptionState> {
 
   final DioClient _client;
 
-  Future<void> startCheckout({required String planTier, required String currency}) async {
+  Future<void> startCheckout({
+    required String planTier,
+    required String currency,
+  }) async {
     emit(const SubscriptionProcessing());
     try {
-      final response = await _client.dio.post('/billing/checkout', data: {
-        'planTier': planTier,
-        'currency': currency,
-      });
+      final response = await _client.dio.post(
+        '/billing/checkout',
+        data: {'planTier': planTier, 'currency': currency},
+      );
       emit(SubscriptionCheckoutReady(response.data['checkoutUrl'] as String));
     } catch (e) {
       emit(SubscriptionError(e.toString()));

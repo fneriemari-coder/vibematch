@@ -18,13 +18,18 @@ class _SwipeDeckScreenState extends State<SwipeDeckScreen> {
   final _controller = CardSwiperController();
   SwipeMode _mode = SwipeMode.cloud;
 
-  bool _onSwipe(int previousIndex, int? currentIndex, CardSwiperDirection direction, List candidates) {
+  bool _onSwipe(
+    int previousIndex,
+    int? currentIndex,
+    CardSwiperDirection direction,
+    List candidates,
+  ) {
     final candidate = candidates[previousIndex];
     context.read<SwipeCubit>().swipe(
-          swipedId: candidate.userId,
-          like: direction == CardSwiperDirection.right,
-          mode: _mode,
-        );
+      swipedId: candidate.userId,
+      like: direction == CardSwiperDirection.right,
+      mode: _mode,
+    );
     return true;
   }
 
@@ -45,26 +50,38 @@ class _SwipeDeckScreenState extends State<SwipeDeckScreen> {
           if (state is SwipeMatchFound) {
             Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => MatchSuccessScreen(otherUserName: state.otherUserName, matchId: state.matchId),
+                builder: (_) => MatchSuccessScreen(
+                  otherUserName: state.otherUserName,
+                  matchId: state.matchId,
+                ),
               ),
             );
           }
           if (state is SwipePaywallRequired) {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const _PaywallGate()),
-            );
+            Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const _PaywallGate()));
           }
           if (state is SwipeError) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message)));
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(state.message)));
           }
         },
         builder: (context, state) {
           if (state is SwipeLoading || state is SwipeIdle) {
-            return const Center(child: CircularProgressIndicator(color: VibeMatchColors.neonPrimary));
+            return const Center(
+              child: CircularProgressIndicator(
+                color: VibeMatchColors.neonPrimary,
+              ),
+            );
           }
           if (state is! SwipeStackLoaded || state.candidates.isEmpty) {
             return const Center(
-              child: Text('Sem candidatos por aqui agora.', style: TextStyle(color: VibeMatchColors.textLow)),
+              child: Text(
+                'Sem candidatos por aqui agora.',
+                style: TextStyle(color: VibeMatchColors.textLow),
+              ),
             );
           }
 
@@ -74,10 +91,13 @@ class _SwipeDeckScreenState extends State<SwipeDeckScreen> {
             child: CardSwiper(
               controller: _controller,
               cardsCount: candidates.length,
-              numberOfCardsDisplayed: candidates.length < 3 ? candidates.length : 3,
+              numberOfCardsDisplayed: candidates.length < 3
+                  ? candidates.length
+                  : 3,
               onSwipe: (previousIndex, currentIndex, direction) =>
                   _onSwipe(previousIndex, currentIndex, direction, candidates),
-              cardBuilder: (context, index, _, __) => SwipeCard(candidate: candidates[index]),
+              cardBuilder: (context, index, _, __) =>
+                  SwipeCard(candidate: candidates[index]),
             ),
           );
         },

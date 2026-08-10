@@ -11,7 +11,11 @@ import '../widgets/vibe_glass_card.dart';
 /// PDF material download, and the recommended-providers upsell — all for
 /// one `courseId`, loaded with no extra taps after the notification tap.
 class VibeAcademyScreen extends StatefulWidget {
-  const VibeAcademyScreen({super.key, required this.courseId, required this.academyRepository});
+  const VibeAcademyScreen({
+    super.key,
+    required this.courseId,
+    required this.academyRepository,
+  });
 
   final String courseId;
   final AcademyRepository academyRepository;
@@ -28,7 +32,9 @@ class _VibeAcademyScreenState extends State<VibeAcademyScreen> {
   void initState() {
     super.initState();
     _courseFuture = widget.academyRepository.getCourseDetail(widget.courseId);
-    _connectionsFuture = widget.academyRepository.getCourseConnections(widget.courseId);
+    _connectionsFuture = widget.academyRepository.getCourseConnections(
+      widget.courseId,
+    );
   }
 
   Future<void> _openMaterial(String url) async {
@@ -37,7 +43,9 @@ class _VibeAcademyScreenState extends State<VibeAcademyScreen> {
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!launched && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Não foi possível abrir o material de apoio.')),
+        const SnackBar(
+          content: Text('Não foi possível abrir o material de apoio.'),
+        ),
       );
     }
   }
@@ -55,19 +63,28 @@ class _VibeAcademyScreenState extends State<VibeAcademyScreen> {
         future: _courseFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator(color: VibeMatchColors.neonPrimary));
+            return const Center(
+              child: CircularProgressIndicator(
+                color: VibeMatchColors.neonPrimary,
+              ),
+            );
           }
           if (snapshot.hasError || !snapshot.hasData) {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
-                child: Text('Não foi possível carregar este curso.', style: VibeMatchTextStyles.body),
+                child: Text(
+                  'Não foi possível carregar este curso.',
+                  style: VibeMatchTextStyles.body,
+                ),
               ),
             );
           }
 
           final course = snapshot.data!;
-          final firstModule = course.modules.isNotEmpty ? course.modules.first : null;
+          final firstModule = course.modules.isNotEmpty
+              ? course.modules.first
+              : null;
 
           return ListView(
             padding: const EdgeInsets.all(16),
@@ -76,7 +93,10 @@ class _VibeAcademyScreenState extends State<VibeAcademyScreen> {
               const SizedBox(height: 20),
               Text(course.title, style: VibeMatchTextStyles.heading),
               const SizedBox(height: 6),
-              Text('por ${course.instructorName}', style: VibeMatchTextStyles.body),
+              Text(
+                'por ${course.instructorName}',
+                style: VibeMatchTextStyles.body,
+              ),
               const SizedBox(height: 12),
               Text(course.description, style: VibeMatchTextStyles.body),
               const SizedBox(height: 20),
@@ -96,12 +116,18 @@ class _VibeAcademyScreenState extends State<VibeAcademyScreen> {
                 ...course.modules.map(
                   (m) => Padding(
                     padding: const EdgeInsets.only(bottom: 6),
-                    child: Text('${m.orderIndex + 1}. ${m.title}', style: VibeMatchTextStyles.body),
+                    child: Text(
+                      '${m.orderIndex + 1}. ${m.title}',
+                      style: VibeMatchTextStyles.body,
+                    ),
                   ),
                 ),
               ],
               const SizedBox(height: 28),
-              Text('Profissionais recomendados', style: VibeMatchTextStyles.subheading),
+              Text(
+                'Profissionais recomendados',
+                style: VibeMatchTextStyles.subheading,
+              ),
               const SizedBox(height: 12),
               _RecommendedProvidersSection(future: _connectionsFuture),
             ],
@@ -142,11 +168,13 @@ class _LessonPlayerState extends State<_LessonPlayer> {
       return;
     }
     _controller = VideoPlayerController.networkUrl(uri)
-      ..initialize().then((_) {
-        if (mounted) setState(() {});
-      }).catchError((_) {
-        if (mounted) setState(() => _failed = true);
-      });
+      ..initialize()
+          .then((_) {
+            if (mounted) setState(() {});
+          })
+          .catchError((_) {
+            if (mounted) setState(() => _failed = true);
+          });
   }
 
   @override
@@ -165,30 +193,42 @@ class _LessonPlayerState extends State<_LessonPlayer> {
             ? const ColoredBox(
                 color: VibeMatchColors.surface,
                 child: Center(
-                  child: Icon(Icons.play_circle_outline, size: 56, color: VibeMatchColors.textLow),
+                  child: Icon(
+                    Icons.play_circle_outline,
+                    size: 56,
+                    color: VibeMatchColors.textLow,
+                  ),
                 ),
               )
             : _controller!.value.isInitialized
-                ? Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      VideoPlayer(_controller!),
-                      IconButton(
-                        iconSize: 56,
-                        icon: Icon(
-                          _controller!.value.isPlaying ? Icons.pause_circle : Icons.play_circle,
-                          color: Colors.white,
-                        ),
-                        onPressed: () => setState(() {
-                          _controller!.value.isPlaying ? _controller!.pause() : _controller!.play();
-                        }),
-                      ),
-                    ],
-                  )
-                : const ColoredBox(
-                    color: VibeMatchColors.surface,
-                    child: Center(child: CircularProgressIndicator(color: VibeMatchColors.neonPrimary)),
+            ? Stack(
+                alignment: Alignment.center,
+                children: [
+                  VideoPlayer(_controller!),
+                  IconButton(
+                    iconSize: 56,
+                    icon: Icon(
+                      _controller!.value.isPlaying
+                          ? Icons.pause_circle
+                          : Icons.play_circle,
+                      color: Colors.white,
+                    ),
+                    onPressed: () => setState(() {
+                      _controller!.value.isPlaying
+                          ? _controller!.pause()
+                          : _controller!.play();
+                    }),
                   ),
+                ],
+              )
+            : const ColoredBox(
+                color: VibeMatchColors.surface,
+                child: Center(
+                  child: CircularProgressIndicator(
+                    color: VibeMatchColors.neonPrimary,
+                  ),
+                ),
+              ),
       ),
     );
   }
@@ -207,12 +247,19 @@ class _RecommendedProvidersSection extends StatelessWidget {
         if (snapshot.connectionState != ConnectionState.done) {
           return const Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
-            child: Center(child: CircularProgressIndicator(color: VibeMatchColors.neonPrimary)),
+            child: Center(
+              child: CircularProgressIndicator(
+                color: VibeMatchColors.neonPrimary,
+              ),
+            ),
           );
         }
         final profiles = snapshot.data?.profiles ?? const [];
         if (profiles.isEmpty) {
-          return Text('Nenhum profissional recomendado ainda.', style: VibeMatchTextStyles.body);
+          return Text(
+            'Nenhum profissional recomendado ainda.',
+            style: VibeMatchTextStyles.body,
+          );
         }
         return Column(
           children: profiles
@@ -224,14 +271,20 @@ class _RecommendedProvidersSection extends StatelessWidget {
                       children: [
                         const CircleAvatar(
                           backgroundColor: VibeMatchColors.background,
-                          child: Icon(Icons.person, color: VibeMatchColors.neonPrimary),
+                          child: Icon(
+                            Icons.person,
+                            color: VibeMatchColors.neonPrimary,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(p.name, style: VibeMatchTextStyles.subheading),
+                              Text(
+                                p.name,
+                                style: VibeMatchTextStyles.subheading,
+                              ),
                               Text(
                                 p.skills.join(' • '),
                                 style: VibeMatchTextStyles.body,
@@ -242,7 +295,10 @@ class _RecommendedProvidersSection extends StatelessWidget {
                           ),
                         ),
                         if (p.hourlyRate != null)
-                          Text('${p.rateCurrency} ${p.hourlyRate}/h', style: VibeMatchTextStyles.scoreDigits),
+                          Text(
+                            '${p.rateCurrency} ${p.hourlyRate}/h',
+                            style: VibeMatchTextStyles.scoreDigits,
+                          ),
                       ],
                     ),
                   ),

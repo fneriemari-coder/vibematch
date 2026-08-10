@@ -30,19 +30,29 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   void _load() {
-    setState(() => _future = widget.adminRepository.getDashboardMetrics(_period));
+    setState(
+      () => _future = widget.adminRepository.getDashboardMetrics(_period),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: VibeMatchColors.background,
-      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, title: const Text('Painel Admin')),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: const Text('Painel Admin'),
+      ),
       body: FutureBuilder<DashboardMetrics>(
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: VibeMatchColors.neonPrimary));
+            return const Center(
+              child: CircularProgressIndicator(
+                color: VibeMatchColors.neonPrimary,
+              ),
+            );
           }
           if (snapshot.hasError) {
             final isForbidden = snapshot.error.toString().contains('403');
@@ -66,19 +76,40 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             child: ListView(
               padding: const EdgeInsets.all(20),
               children: [
-                _PeriodSelector(selected: _period, onChanged: (p) { _period = p; _load(); }),
+                _PeriodSelector(
+                  selected: _period,
+                  onChanged: (p) {
+                    _period = p;
+                    _load();
+                  },
+                ),
                 const SizedBox(height: 20),
                 _StatGrid(metrics: metrics),
                 const SizedBox(height: 28),
-                Text('Receita Líquida da Plataforma (USD)', style: VibeMatchTextStyles.heading.copyWith(fontSize: 16)),
+                Text(
+                  'Receita Líquida da Plataforma (USD)',
+                  style: VibeMatchTextStyles.heading.copyWith(fontSize: 16),
+                ),
                 const SizedBox(height: 12),
-                _RevenueBarChart(breakdown: metrics.netRevenueUsd, currencySymbol: r'$'),
+                _RevenueBarChart(
+                  breakdown: metrics.netRevenueUsd,
+                  currencySymbol: r'$',
+                ),
                 const SizedBox(height: 28),
-                Text('Receita Líquida da Plataforma (BRL)', style: VibeMatchTextStyles.heading.copyWith(fontSize: 16)),
+                Text(
+                  'Receita Líquida da Plataforma (BRL)',
+                  style: VibeMatchTextStyles.heading.copyWith(fontSize: 16),
+                ),
                 const SizedBox(height: 12),
-                _RevenueBarChart(breakdown: metrics.netRevenueBrl, currencySymbol: 'R\$'),
+                _RevenueBarChart(
+                  breakdown: metrics.netRevenueBrl,
+                  currencySymbol: 'R\$',
+                ),
                 const SizedBox(height: 28),
-                Text('MRR vs GMV por moeda', style: VibeMatchTextStyles.heading.copyWith(fontSize: 16)),
+                Text(
+                  'MRR vs GMV por moeda',
+                  style: VibeMatchTextStyles.heading.copyWith(fontSize: 16),
+                ),
                 const SizedBox(height: 12),
                 _MrrGmvChart(metrics: metrics),
               ],
@@ -105,7 +136,9 @@ class _PeriodSelector extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Material(
-              color: isSelected ? VibeMatchColors.neonPrimary : VibeMatchColors.surface,
+              color: isSelected
+                  ? VibeMatchColors.neonPrimary
+                  : VibeMatchColors.surface,
               borderRadius: VibeMatchRadii.buttonRadius,
               child: InkWell(
                 borderRadius: VibeMatchRadii.buttonRadius,
@@ -116,7 +149,9 @@ class _PeriodSelector extends StatelessWidget {
                     p.label,
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: isSelected ? Colors.black : VibeMatchColors.textHigh,
+                      color: isSelected
+                          ? Colors.black
+                          : VibeMatchColors.textHigh,
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
                     ),
@@ -139,12 +174,42 @@ class _StatGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tiles = [
-      _StatTileData('Matches Ativos', '${metrics.liquidity.activeMatches}', Icons.favorite, VibeMatchColors.neonPrimary),
-      _StatTileData('Projetos Concluídos', '${metrics.liquidity.completedProjects}', Icons.task_alt, const Color(0xFF10B981)),
-      _StatTileData('Tempo Médio p/ Match', _formatDuration(metrics.liquidity.avgTimeToMatchSeconds), Icons.timer, VibeMatchColors.scoreGold),
-      _StatTileData('K-SCORE Médio', '${metrics.liquidity.avgKScore}', Icons.bolt, VibeMatchColors.scoreGold),
-      _StatTileData('Contas em Revisão', '${metrics.liquidity.accountsUnderReview}', Icons.shield_moon_outlined, const Color(0xFFEF4444)),
-      _StatTileData('Churn Assinaturas', '${metrics.churn.subscriptionPastDueRatePercent.toStringAsFixed(1)}%', Icons.trending_down, const Color(0xFFEF4444)),
+      _StatTileData(
+        'Matches Ativos',
+        '${metrics.liquidity.activeMatches}',
+        Icons.favorite,
+        VibeMatchColors.neonPrimary,
+      ),
+      _StatTileData(
+        'Projetos Concluídos',
+        '${metrics.liquidity.completedProjects}',
+        Icons.task_alt,
+        const Color(0xFF10B981),
+      ),
+      _StatTileData(
+        'Tempo Médio p/ Match',
+        _formatDuration(metrics.liquidity.avgTimeToMatchSeconds),
+        Icons.timer,
+        VibeMatchColors.scoreGold,
+      ),
+      _StatTileData(
+        'K-SCORE Médio',
+        '${metrics.liquidity.avgKScore}',
+        Icons.bolt,
+        VibeMatchColors.scoreGold,
+      ),
+      _StatTileData(
+        'Contas em Revisão',
+        '${metrics.liquidity.accountsUnderReview}',
+        Icons.shield_moon_outlined,
+        const Color(0xFFEF4444),
+      ),
+      _StatTileData(
+        'Churn Assinaturas',
+        '${metrics.churn.subscriptionPastDueRatePercent.toStringAsFixed(1)}%',
+        Icons.trending_down,
+        const Color(0xFFEF4444),
+      ),
     ];
 
     return GridView.builder(
@@ -189,8 +254,14 @@ class _StatTile extends StatelessWidget {
         children: [
           Icon(data.icon, color: data.color, size: 20),
           const SizedBox(height: 8),
-          Text(data.value, style: VibeMatchTextStyles.heading.copyWith(fontSize: 20)),
-          Text(data.label, style: VibeMatchTextStyles.body.copyWith(fontSize: 11)),
+          Text(
+            data.value,
+            style: VibeMatchTextStyles.heading.copyWith(fontSize: 20),
+          ),
+          Text(
+            data.label,
+            style: VibeMatchTextStyles.body.copyWith(fontSize: 11),
+          ),
         ],
       ),
     );
@@ -198,7 +269,10 @@ class _StatTile extends StatelessWidget {
 }
 
 class _RevenueBarChart extends StatelessWidget {
-  const _RevenueBarChart({required this.breakdown, required this.currencySymbol});
+  const _RevenueBarChart({
+    required this.breakdown,
+    required this.currencySymbol,
+  });
 
   final RevenueBreakdown breakdown;
   final String currencySymbol;
@@ -212,7 +286,9 @@ class _RevenueBarChart extends StatelessWidget {
       _Bar('Manut.', breakdown.maintenance, const Color(0xFF10B981)),
       _Bar('Cursos', breakdown.course, const Color(0xFFEC4899)),
     ];
-    final maxY = (bars.map((b) => b.value).fold<double>(0, (a, b) => a > b ? a : b)) * 1.2;
+    final maxY =
+        (bars.map((b) => b.value).fold<double>(0, (a, b) => a > b ? a : b)) *
+        1.2;
 
     return VibeGlassCard(
       child: Column(
@@ -225,18 +301,31 @@ class _RevenueBarChart extends StatelessWidget {
                 gridData: const FlGridData(show: false),
                 borderData: FlBorderData(show: false),
                 titlesData: FlTitlesData(
-                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  leftTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
                       getTitlesWidget: (value, meta) {
                         final index = value.toInt();
-                        if (index < 0 || index >= bars.length) return const SizedBox.shrink();
+                        if (index < 0 || index >= bars.length)
+                          return const SizedBox.shrink();
                         return Padding(
                           padding: const EdgeInsets.only(top: 6),
-                          child: Text(bars[index].label, style: const TextStyle(color: VibeMatchColors.textLow, fontSize: 10)),
+                          child: Text(
+                            bars[index].label,
+                            style: const TextStyle(
+                              color: VibeMatchColors.textLow,
+                              fontSize: 10,
+                            ),
+                          ),
                         );
                       },
                     ),
@@ -246,7 +335,14 @@ class _RevenueBarChart extends StatelessWidget {
                   for (int i = 0; i < bars.length; i++)
                     BarChartGroupData(
                       x: i,
-                      barRods: [BarChartRodData(toY: bars[i].value, color: bars[i].color, width: 22, borderRadius: BorderRadius.circular(4))],
+                      barRods: [
+                        BarChartRodData(
+                          toY: bars[i].value,
+                          color: bars[i].color,
+                          width: 22,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ],
                     ),
                 ],
               ),
@@ -256,8 +352,14 @@ class _RevenueBarChart extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Total: $currencySymbol${NumberFormat('#,##0.00').format(breakdown.total)}', style: VibeMatchTextStyles.subheading),
-              const Text('*nominal — ver nota', style: TextStyle(color: VibeMatchColors.textLow, fontSize: 10)),
+              Text(
+                'Total: $currencySymbol${NumberFormat('#,##0.00').format(breakdown.total)}',
+                style: VibeMatchTextStyles.subheading,
+              ),
+              const Text(
+                '*nominal — ver nota',
+                style: TextStyle(color: VibeMatchColors.textLow, fontSize: 10),
+              ),
             ],
           ),
         ],
@@ -287,17 +389,30 @@ class _MrrGmvChart extends StatelessWidget {
             gridData: const FlGridData(show: false),
             borderData: FlBorderData(show: false),
             titlesData: FlTitlesData(
-              leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              leftTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              rightTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              topTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
               bottomTitles: AxisTitles(
                 sideTitles: SideTitles(
                   showTitles: true,
                   getTitlesWidget: (value, meta) {
                     const labels = ['MRR', 'GMV'];
                     final index = value.toInt();
-                    if (index < 0 || index >= labels.length) return const SizedBox.shrink();
-                    return Text(labels[index], style: const TextStyle(color: VibeMatchColors.textLow, fontSize: 11));
+                    if (index < 0 || index >= labels.length)
+                      return const SizedBox.shrink();
+                    return Text(
+                      labels[index],
+                      style: const TextStyle(
+                        color: VibeMatchColors.textLow,
+                        fontSize: 11,
+                      ),
+                    );
                   },
                 ),
               ),

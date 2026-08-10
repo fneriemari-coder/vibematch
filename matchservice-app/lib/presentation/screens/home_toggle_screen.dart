@@ -32,7 +32,8 @@ class HomeToggleScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authState = context.watch<AuthCubit>().state;
-    final isAdmin = authState is AuthAuthenticated && authState.user.role == UserRole.admin;
+    final isAdmin =
+        authState is AuthAuthenticated && authState.user.role == UserRole.admin;
 
     return Scaffold(
       backgroundColor: VibeMatchColors.background,
@@ -42,26 +43,39 @@ class HomeToggleScreen extends StatelessWidget {
         actions: [
           if (isAdmin)
             IconButton(
-              icon: const Icon(Icons.admin_panel_settings_outlined, color: VibeMatchColors.scoreGold),
+              icon: const Icon(
+                Icons.admin_panel_settings_outlined,
+                color: VibeMatchColors.scoreGold,
+              ),
               tooltip: 'Painel Admin',
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => AdminDashboardScreen(adminRepository: context.read<AdminRepository>()),
+                  builder: (_) => AdminDashboardScreen(
+                    adminRepository: context.read<AdminRepository>(),
+                  ),
                 ),
               ),
             ),
           if (isAdmin)
             IconButton(
-              icon: const Icon(Icons.people_outline, color: VibeMatchColors.scoreGold),
+              icon: const Icon(
+                Icons.people_outline,
+                color: VibeMatchColors.scoreGold,
+              ),
               tooltip: 'Gerenciar Usuários',
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => AdminUsersScreen(adminRepository: context.read<AdminRepository>()),
+                  builder: (_) => AdminUsersScreen(
+                    adminRepository: context.read<AdminRepository>(),
+                  ),
                 ),
               ),
             ),
           IconButton(
-            icon: const Icon(Icons.account_balance_wallet_outlined, color: VibeMatchColors.neonPrimary),
+            icon: const Icon(
+              Icons.account_balance_wallet_outlined,
+              color: VibeMatchColors.neonPrimary,
+            ),
             onPressed: () {
               final state = context.read<AuthCubit>().state;
               if (state is! AuthAuthenticated) return;
@@ -84,9 +98,15 @@ class HomeToggleScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('MatchService', style: VibeMatchTextStyles.heading.copyWith(fontSize: 30)),
+              Text(
+                'MatchService',
+                style: VibeMatchTextStyles.heading.copyWith(fontSize: 30),
+              ),
               const SizedBox(height: 8),
-              const Text('Como você quer explorar hoje?', style: TextStyle(color: VibeMatchColors.textLow)),
+              const Text(
+                'Como você quer explorar hoje?',
+                style: TextStyle(color: VibeMatchColors.textLow),
+              ),
               const SizedBox(height: 40),
               _ModeButton(
                 emoji: '☁️',
@@ -111,10 +131,18 @@ class HomeToggleScreen extends StatelessWidget {
               const SizedBox(height: 32),
               TextButton.icon(
                 onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const DiscoveryFeedScreen()),
+                  MaterialPageRoute(
+                    builder: (_) => const DiscoveryFeedScreen(),
+                  ),
                 ),
-                icon: const Icon(Icons.explore, color: VibeMatchColors.neonPrimary),
-                label: const Text('Explorar Feed de Descoberta', style: TextStyle(color: VibeMatchColors.neonPrimary)),
+                icon: const Icon(
+                  Icons.explore,
+                  color: VibeMatchColors.neonPrimary,
+                ),
+                label: const Text(
+                  'Explorar Feed de Descoberta',
+                  style: TextStyle(color: VibeMatchColors.neonPrimary),
+                ),
               ),
             ],
           ),
@@ -125,7 +153,12 @@ class HomeToggleScreen extends StatelessWidget {
 }
 
 class _ModeButton extends StatelessWidget {
-  const _ModeButton({required this.emoji, required this.label, required this.subtitle, required this.onTap});
+  const _ModeButton({
+    required this.emoji,
+    required this.label,
+    required this.subtitle,
+    required this.onTap,
+  });
 
   final String emoji;
   final String label;
@@ -150,7 +183,12 @@ class _ModeButton extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(label, style: VibeMatchTextStyles.subheading.copyWith(fontSize: 18)),
+                    Text(
+                      label,
+                      style: VibeMatchTextStyles.subheading.copyWith(
+                        fontSize: 18,
+                      ),
+                    ),
                     Text(subtitle, style: VibeMatchTextStyles.body),
                   ],
                 ),

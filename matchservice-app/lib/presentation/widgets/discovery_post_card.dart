@@ -16,7 +16,8 @@ class DiscoveryPostCard extends StatefulWidget {
   });
 
   final DiscoveryFeedItem item;
-  final bool isActive; // true only for the currently on-screen page — gates video playback
+  final bool
+  isActive; // true only for the currently on-screen page — gates video playback
   final VoidCallback onImplement;
 
   @override
@@ -30,12 +31,13 @@ class _DiscoveryPostCardState extends State<DiscoveryPostCard> {
   void initState() {
     super.initState();
     if (widget.item.isVideo) {
-      _controller = VideoPlayerController.networkUrl(Uri.parse(widget.item.mediaUrl!))
-        ..setLooping(true)
-        ..initialize().then((_) {
-          if (mounted) setState(() {});
-          if (widget.isActive) _controller!.play();
-        });
+      _controller =
+          VideoPlayerController.networkUrl(Uri.parse(widget.item.mediaUrl!))
+            ..setLooping(true)
+            ..initialize().then((_) {
+              if (mounted) setState(() {});
+              if (widget.isActive) _controller!.play();
+            });
     }
   }
 
@@ -79,7 +81,10 @@ class _DiscoveryPostCardState extends State<DiscoveryPostCard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(widget.item.creatorName, style: VibeMatchTextStyles.subheading),
+              Text(
+                widget.item.creatorName,
+                style: VibeMatchTextStyles.subheading,
+              ),
               const SizedBox(height: 6),
               Text(
                 widget.item.title,
@@ -92,11 +97,21 @@ class _DiscoveryPostCardState extends State<DiscoveryPostCard> {
                 children: [
                   const Icon(Icons.favorite, size: 14, color: Colors.white70),
                   const SizedBox(width: 4),
-                  Text('${widget.item.likesCount}', style: VibeMatchTextStyles.body),
+                  Text(
+                    '${widget.item.likesCount}',
+                    style: VibeMatchTextStyles.body,
+                  ),
                   const SizedBox(width: 16),
-                  const Icon(Icons.remove_red_eye, size: 14, color: Colors.white70),
+                  const Icon(
+                    Icons.remove_red_eye,
+                    size: 14,
+                    color: Colors.white70,
+                  ),
                   const SizedBox(width: 4),
-                  Text('${widget.item.viewsCount}', style: VibeMatchTextStyles.body),
+                  Text(
+                    '${widget.item.viewsCount}',
+                    style: VibeMatchTextStyles.body,
+                  ),
                 ],
               ),
             ],
@@ -118,7 +133,10 @@ class _DiscoveryPostCardState extends State<DiscoveryPostCard> {
                   child: Center(
                     child: Text(
                       'Implementar no meu Negócio',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -145,8 +163,10 @@ class _DiscoveryPostCardState extends State<DiscoveryPostCard> {
       return CachedNetworkImage(
         imageUrl: widget.item.mediaUrl!,
         fit: BoxFit.cover,
-        placeholder: (_, __) => const ColoredBox(color: VibeMatchColors.surface),
-        errorWidget: (_, __, ___) => const ColoredBox(color: VibeMatchColors.surface),
+        placeholder: (_, __) =>
+            const ColoredBox(color: VibeMatchColors.surface),
+        errorWidget: (_, __, ___) =>
+            const ColoredBox(color: VibeMatchColors.surface),
       );
     }
     return const ColoredBox(color: VibeMatchColors.surface);

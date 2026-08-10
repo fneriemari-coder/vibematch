@@ -20,13 +20,17 @@ class PostRepository {
     required List<String> tags,
   }) async {
     try {
-      final response = await _client.dio.post('/feed/post', data: {
-        'title': title,
-        'contentText': contentText,
-        if (mediaUrl != null) 'mediaUrl': mediaUrl,
-        if (videoDurationSeconds != null) 'videoDurationSeconds': videoDurationSeconds,
-        'tags': tags,
-      });
+      final response = await _client.dio.post(
+        '/feed/post',
+        data: {
+          'title': title,
+          'contentText': contentText,
+          if (mediaUrl != null) 'mediaUrl': mediaUrl,
+          if (videoDurationSeconds != null)
+            'videoDurationSeconds': videoDurationSeconds,
+          'tags': tags,
+        },
+      );
       return response.data['id'] as String;
     } on DioException catch (e) {
       if (e.response?.statusCode == 422) {

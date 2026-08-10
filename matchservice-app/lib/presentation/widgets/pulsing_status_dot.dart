@@ -3,20 +3,22 @@ import '../../data/models/wallet_models.dart';
 import '../../core/theme/vibe_match_theme.dart';
 
 Color _colorFor(TimelineStatus status) => switch (status) {
-      TimelineStatus.verifying => const Color(0xFFFFD60A), // yellow — Verificando por IA
-      TimelineStatus.approved => const Color(0xFF10B981), // green — Aprovado e Pago
-      TimelineStatus.disputed => const Color(0xFFEF4444), // red — Em disputa
-      TimelineStatus.failed => const Color(0xFFEF4444),
-      TimelineStatus.scheduled => VibeMatchColors.textLow,
-    };
+  TimelineStatus.verifying => const Color(
+    0xFFFFD60A,
+  ), // yellow — Verificando por IA
+  TimelineStatus.approved => const Color(0xFF10B981), // green — Aprovado e Pago
+  TimelineStatus.disputed => const Color(0xFFEF4444), // red — Em disputa
+  TimelineStatus.failed => const Color(0xFFEF4444),
+  TimelineStatus.scheduled => VibeMatchColors.textLow,
+};
 
 String labelFor(TimelineStatus status) => switch (status) {
-      TimelineStatus.verifying => 'Verificando por IA',
-      TimelineStatus.approved => 'Aprovado e Pago',
-      TimelineStatus.disputed => 'Em disputa',
-      TimelineStatus.failed => 'Falhou',
-      TimelineStatus.scheduled => 'Agendado',
-    };
+  TimelineStatus.verifying => 'Verificando por IA',
+  TimelineStatus.approved => 'Aprovado e Pago',
+  TimelineStatus.disputed => 'Em disputa',
+  TimelineStatus.failed => 'Falhou',
+  TimelineStatus.scheduled => 'Agendado',
+};
 
 /// Circular status indicator for the wallet timeline. Only VERIFYING pulses
 /// (an AI audit is actively in flight) — every other state is a fixed dot,
@@ -31,13 +33,17 @@ class PulsingStatusDot extends StatefulWidget {
   State<PulsingStatusDot> createState() => _PulsingStatusDotState();
 }
 
-class _PulsingStatusDotState extends State<PulsingStatusDot> with SingleTickerProviderStateMixin {
+class _PulsingStatusDotState extends State<PulsingStatusDot>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat(reverse: true);
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
   }
 
   @override
@@ -66,7 +72,13 @@ class _PulsingStatusDotState extends State<PulsingStatusDot> with SingleTickerPr
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: color.withOpacity(opacity),
-            boxShadow: [BoxShadow(color: color.withOpacity(opacity * 0.6), blurRadius: 6, spreadRadius: 1)],
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(opacity * 0.6),
+                blurRadius: 6,
+                spreadRadius: 1,
+              ),
+            ],
           ),
         );
       },

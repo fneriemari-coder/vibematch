@@ -45,12 +45,17 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
         pageBuilder: (_, animation, __) => FadeTransition(
           opacity: animation,
           child: SlideTransition(
-            position: Tween(begin: const Offset(0, 0.08), end: Offset.zero).animate(animation),
+            position: Tween(
+              begin: const Offset(0, 0.08),
+              end: Offset.zero,
+            ).animate(animation),
             child: BlocProvider(
               create: (context) => SwipeCubit(context.read())
                 ..loadStackForTag(
                   skillTagId: item.skillTagId,
-                  mode: item.source == 'LOCAL' ? SwipeMode.local : SwipeMode.cloud,
+                  mode: item.source == 'LOCAL'
+                      ? SwipeMode.local
+                      : SwipeMode.cloud,
                 ),
               child: const SwipeDeckScreen(),
             ),
@@ -77,11 +82,18 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
               };
 
               if (items.isEmpty && state is FeedLoading) {
-                return const Center(child: CircularProgressIndicator(color: VibeMatchColors.neonPrimary));
+                return const Center(
+                  child: CircularProgressIndicator(
+                    color: VibeMatchColors.neonPrimary,
+                  ),
+                );
               }
               if (items.isEmpty) {
                 return const Center(
-                  child: Text('Nenhum conteúdo por aqui ainda.', style: TextStyle(color: VibeMatchColors.textLow)),
+                  child: Text(
+                    'Nenhum conteúdo por aqui ainda.',
+                    style: TextStyle(color: VibeMatchColors.textLow),
+                  ),
                 );
               }
 
@@ -130,7 +142,10 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 14,
+                  ),
                   hintText: 'Descreva sua dor... a IA traduz em soluções',
                   hintStyle: const TextStyle(color: VibeMatchColors.textLow),
                   prefixIcon: thinking
@@ -139,10 +154,16 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
                           child: SizedBox(
                             height: 16,
                             width: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: VibeMatchColors.neonPrimary),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: VibeMatchColors.neonPrimary,
+                            ),
                           ),
                         )
-                      : const Icon(Icons.auto_awesome, color: VibeMatchColors.neonPrimary),
+                      : const Icon(
+                          Icons.auto_awesome,
+                          color: VibeMatchColors.neonPrimary,
+                        ),
                 ),
                 onSubmitted: (value) {
                   if (value.trim().isEmpty) return;
@@ -160,7 +181,9 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: VibeMatchColors.surface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (sheetContext) => Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -172,11 +195,15 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
             Wrap(
               spacing: 8,
               children: result.interpretedNeeds
-                  .map((tag) => Chip(
-                        label: Text(tag),
-                        backgroundColor: VibeMatchColors.background,
-                        labelStyle: const TextStyle(color: VibeMatchColors.neonPrimary),
-                      ))
+                  .map(
+                    (tag) => Chip(
+                      label: Text(tag),
+                      backgroundColor: VibeMatchColors.background,
+                      labelStyle: const TextStyle(
+                        color: VibeMatchColors.neonPrimary,
+                      ),
+                    ),
+                  )
                   .toList(),
             ),
             const SizedBox(height: 20),
@@ -186,10 +213,12 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => BlocProvider(
-                      create: (context) => SwipeCubit(context.read())
-                        ..loadStack(
-                          result.suggestedMode == 'LOCAL' ? SwipeMode.local : SwipeMode.cloud,
-                        ),
+                      create: (context) =>
+                          SwipeCubit(context.read())..loadStack(
+                            result.suggestedMode == 'LOCAL'
+                                ? SwipeMode.local
+                                : SwipeMode.cloud,
+                          ),
                       child: const SwipeDeckScreen(),
                     ),
                   ),

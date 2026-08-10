@@ -43,8 +43,12 @@ class _MastermindScreenState extends State<MastermindScreen> {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } on DioException catch (e) {
       if (!mounted) return;
-      final message = e.response?.data?['message']?.toString() ?? 'Não foi possível reservar esta sessão.';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      final message =
+          e.response?.data?['message']?.toString() ??
+          'Não foi possível reservar esta sessão.';
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     } finally {
       if (mounted) setState(() => _busySessionIds.remove(session.id));
     }
@@ -58,8 +62,12 @@ class _MastermindScreenState extends State<MastermindScreen> {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } on DioException catch (e) {
       if (!mounted) return;
-      final message = e.response?.data?['message']?.toString() ?? 'Acesso indisponível no momento.';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      final message =
+          e.response?.data?['message']?.toString() ??
+          'Acesso indisponível no momento.';
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     } finally {
       if (mounted) setState(() => _busySessionIds.remove(session.id));
     }
@@ -76,7 +84,11 @@ class _MastermindScreenState extends State<MastermindScreen> {
           future: _sessionsFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState != ConnectionState.done) {
-              return const Center(child: CircularProgressIndicator(color: VibeMatchColors.neonPrimary));
+              return const Center(
+                child: CircularProgressIndicator(
+                  color: VibeMatchColors.neonPrimary,
+                ),
+              );
             }
             final sessions = snapshot.data ?? const [];
             if (sessions.isEmpty) {
@@ -84,7 +96,10 @@ class _MastermindScreenState extends State<MastermindScreen> {
                 children: [
                   Padding(
                     padding: const EdgeInsets.all(24),
-                    child: Text('Nenhuma sessão agendada no momento.', style: VibeMatchTextStyles.body),
+                    child: Text(
+                      'Nenhuma sessão agendada no momento.',
+                      style: VibeMatchTextStyles.body,
+                    ),
                   ),
                 ],
               );
@@ -102,16 +117,28 @@ class _MastermindScreenState extends State<MastermindScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(session.title, style: VibeMatchTextStyles.subheading),
+                        Text(
+                          session.title,
+                          style: VibeMatchTextStyles.subheading,
+                        ),
                         const SizedBox(height: 4),
-                        Text('com ${session.hostName}', style: VibeMatchTextStyles.body),
+                        Text(
+                          'com ${session.hostName}',
+                          style: VibeMatchTextStyles.body,
+                        ),
                         const SizedBox(height: 4),
-                        Text(formatter.format(session.scheduledFor.toLocal()), style: VibeMatchTextStyles.body),
+                        Text(
+                          formatter.format(session.scheduledFor.toLocal()),
+                          style: VibeMatchTextStyles.body,
+                        ),
                         const SizedBox(height: 12),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('${session.currency} ${session.accessFee}', style: VibeMatchTextStyles.scoreDigits),
+                            Text(
+                              '${session.currency} ${session.accessFee}',
+                              style: VibeMatchTextStyles.scoreDigits,
+                            ),
                             Row(
                               children: [
                                 OutlinedButton(
@@ -120,12 +147,16 @@ class _MastermindScreenState extends State<MastermindScreen> {
                                 ),
                                 const SizedBox(width: 8),
                                 ElevatedButton(
-                                  onPressed: busy ? null : () => _access(session),
+                                  onPressed: busy
+                                      ? null
+                                      : () => _access(session),
                                   child: busy
                                       ? const SizedBox(
                                           height: 16,
                                           width: 16,
-                                          child: CircularProgressIndicator(strokeWidth: 2),
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
                                         )
                                       : const Text('Acessar'),
                                 ),

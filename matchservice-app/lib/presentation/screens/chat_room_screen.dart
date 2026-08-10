@@ -4,7 +4,11 @@ import '../../core/api/dio_client.dart';
 import '../../core/theme/vibe_match_theme.dart';
 
 class ChatRoomScreen extends StatefulWidget {
-  const ChatRoomScreen({super.key, required this.matchId, required this.socketBaseUrl});
+  const ChatRoomScreen({
+    super.key,
+    required this.matchId,
+    required this.socketBaseUrl,
+  });
 
   final String matchId;
   final String socketBaseUrl;
@@ -36,7 +40,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     );
     _socket!
       ..connect()
-      ..onConnect((_) => _socket!.emit('joinMatch', {'matchId': widget.matchId}))
+      ..onConnect(
+        (_) => _socket!.emit('joinMatch', {'matchId': widget.matchId}),
+      )
       ..on('newMessage', (data) {
         if (!mounted) return;
         setState(() => _messages.add(Map<String, dynamic>.from(data as Map)));
@@ -74,7 +80,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   alignment: Alignment.centerLeft,
                   child: Container(
                     margin: const EdgeInsets.symmetric(vertical: 4),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       color: VibeMatchColors.surface,
                       borderRadius: VibeMatchRadii.buttonRadius,
@@ -82,13 +91,18 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(message['content'] as String? ?? '', style: VibeMatchTextStyles.subheading),
+                        Text(
+                          message['content'] as String? ?? '',
+                          style: VibeMatchTextStyles.subheading,
+                        ),
                         if (message['translatedContent'] != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(
                               message['translatedContent'] as String,
-                              style: VibeMatchTextStyles.body.copyWith(fontStyle: FontStyle.italic),
+                              style: VibeMatchTextStyles.body.copyWith(
+                                fontStyle: FontStyle.italic,
+                              ),
                             ),
                           ),
                       ],
@@ -107,12 +121,17 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                     child: TextField(
                       controller: _inputController,
                       style: const TextStyle(color: Colors.white),
-                      decoration: const InputDecoration(hintText: 'Mensagem...'),
+                      decoration: const InputDecoration(
+                        hintText: 'Mensagem...',
+                      ),
                       onSubmitted: (_) => _send(),
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.send, color: VibeMatchColors.neonPrimary),
+                    icon: const Icon(
+                      Icons.send,
+                      color: VibeMatchColors.neonPrimary,
+                    ),
                     onPressed: _send,
                   ),
                 ],

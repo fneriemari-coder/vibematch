@@ -55,7 +55,11 @@ class SwipeCubit extends Cubit<SwipeState> {
   }) async {
     emit(const SwipeLoading());
     try {
-      final candidates = await _repository.getStack(mode: mode, lat: lat, lng: lng);
+      final candidates = await _repository.getStack(
+        mode: mode,
+        lat: lat,
+        lng: lng,
+      );
       emit(SwipeStackLoaded(candidates, mode));
     } on DioException catch (e) {
       emit(SwipeError(_messageFor(e)));
@@ -65,16 +69,28 @@ class SwipeCubit extends Cubit<SwipeState> {
   Future<void> loadStack(SwipeMode mode, {double? lat, double? lng}) async {
     emit(const SwipeLoading());
     try {
-      final candidates = await _repository.getStack(mode: mode, lat: lat, lng: lng);
+      final candidates = await _repository.getStack(
+        mode: mode,
+        lat: lat,
+        lng: lng,
+      );
       emit(SwipeStackLoaded(candidates, mode));
     } on DioException catch (e) {
       emit(SwipeError(_messageFor(e)));
     }
   }
 
-  Future<void> swipe({required String swipedId, required bool like, required SwipeMode mode}) async {
+  Future<void> swipe({
+    required String swipedId,
+    required bool like,
+    required SwipeMode mode,
+  }) async {
     try {
-      final result = await _repository.swipe(swipedId: swipedId, like: like, mode: mode);
+      final result = await _repository.swipe(
+        swipedId: swipedId,
+        like: like,
+        mode: mode,
+      );
       final match = result['match'];
       if (match != null) {
         emit(SwipeMatchFound(match['id'] as String, swipedId));
@@ -89,5 +105,7 @@ class SwipeCubit extends Cubit<SwipeState> {
   }
 
   String _messageFor(DioException e) =>
-      e.response?.data?['message']?.toString() ?? e.message ?? 'Unexpected error';
+      e.response?.data?['message']?.toString() ??
+      e.message ??
+      'Unexpected error';
 }

@@ -13,7 +13,11 @@ import '../widgets/vibe_glass_card.dart';
 /// balance + BNPL credit cards, and an animated installments/milestones
 /// timeline — built to read as a luxury fintech product, not a utility screen.
 class WalletScreen extends StatelessWidget {
-  const WalletScreen({super.key, required this.walletRepository, required this.currentUser});
+  const WalletScreen({
+    super.key,
+    required this.walletRepository,
+    required this.currentUser,
+  });
 
   final WalletRepository walletRepository;
   final AppUser currentUser;
@@ -41,30 +45,43 @@ class _WalletView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: VibeMatchColors.background,
-      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, title: const Text('Carteira')),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: const Text('Carteira'),
+      ),
       body: BlocConsumer<WalletCubit, WalletState>(
         listener: (context, state) {
           if (state is WalletError) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message)));
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(state.message)));
           }
         },
         builder: (context, state) {
           if (state is WalletLoading || state is WalletInitial) {
-            return const Center(child: CircularProgressIndicator(color: VibeMatchColors.neonPrimary));
+            return const Center(
+              child: CircularProgressIndicator(
+                color: VibeMatchColors.neonPrimary,
+              ),
+            );
           }
           if (state is! WalletLoaded) {
             return const Center(
-              child: Text('Não foi possível carregar a carteira.', style: TextStyle(color: VibeMatchColors.textLow)),
+              child: Text(
+                'Não foi possível carregar a carteira.',
+                style: TextStyle(color: VibeMatchColors.textLow),
+              ),
             );
           }
 
           return RefreshIndicator(
             color: VibeMatchColors.neonPrimary,
             onRefresh: () => context.read<WalletCubit>().load(
-                  initialBalance: state.balance,
-                  currency: state.currency,
-                  userId: currentUser.id,
-                ),
+              initialBalance: state.balance,
+              currency: state.currency,
+              userId: currentUser.id,
+            ),
             child: ListView(
               padding: const EdgeInsets.all(20),
               children: [
@@ -72,20 +89,32 @@ class _WalletView extends StatelessWidget {
                 const SizedBox(height: 24),
                 _BalanceCard(state: state),
                 const SizedBox(height: 16),
-                if (currentUser.role == UserRole.client || currentUser.role == UserRole.both)
-                  _BnplCreditCard(limit: state.bnplCreditLimit, currency: state.currency),
+                if (currentUser.role == UserRole.client ||
+                    currentUser.role == UserRole.both)
+                  _BnplCreditCard(
+                    limit: state.bnplCreditLimit,
+                    currency: state.currency,
+                  ),
                 const SizedBox(height: 28),
-                Text('Linha do tempo', style: VibeMatchTextStyles.heading.copyWith(fontSize: 18)),
+                Text(
+                  'Linha do tempo',
+                  style: VibeMatchTextStyles.heading.copyWith(fontSize: 18),
+                ),
                 const SizedBox(height: 12),
                 if (state.timeline.items.isEmpty)
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 24),
                     child: Center(
-                      child: Text('Nenhuma parcela ou meta por aqui ainda.', style: TextStyle(color: VibeMatchColors.textLow)),
+                      child: Text(
+                        'Nenhuma parcela ou meta por aqui ainda.',
+                        style: TextStyle(color: VibeMatchColors.textLow),
+                      ),
                     ),
                   )
                 else
-                  ...state.timeline.items.map((item) => _TimelineTile(item: item)),
+                  ...state.timeline.items.map(
+                    (item) => _TimelineTile(item: item),
+                  ),
               ],
             ),
           );
@@ -104,11 +133,18 @@ class _KScoreHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text('K-SCORE DIGITAL', style: VibeMatchTextStyles.body.copyWith(letterSpacing: 2)),
+        Text(
+          'K-SCORE DIGITAL',
+          style: VibeMatchTextStyles.body.copyWith(letterSpacing: 2),
+        ),
         const SizedBox(height: 10),
         ShaderMask(
           shaderCallback: (bounds) => const LinearGradient(
-            colors: [VibeMatchColors.scoreGold, Color(0xFFFFE9A8), VibeMatchColors.scoreGold],
+            colors: [
+              VibeMatchColors.scoreGold,
+              Color(0xFFFFE9A8),
+              VibeMatchColors.scoreGold,
+            ],
           ).createShader(bounds),
           child: Text(
             kScore.toString().padLeft(4, '0'),
@@ -117,12 +153,17 @@ class _KScoreHeader extends StatelessWidget {
               fontWeight: FontWeight.w900,
               color: Colors.white,
               letterSpacing: 2,
-              shadows: [Shadow(color: VibeMatchColors.scoreGold, blurRadius: 24)],
+              shadows: [
+                Shadow(color: VibeMatchColors.scoreGold, blurRadius: 24),
+              ],
             ),
           ),
         ),
         const SizedBox(height: 4),
-        const Text('Termômetro de confiança do prestador', style: TextStyle(color: VibeMatchColors.textLow, fontSize: 12)),
+        const Text(
+          'Termômetro de confiança do prestador',
+          style: TextStyle(color: VibeMatchColors.textLow, fontSize: 12),
+        ),
       ],
     );
   }
@@ -144,7 +185,10 @@ class _BalanceCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Saldo Disponível', style: TextStyle(color: VibeMatchColors.textLow, fontSize: 13)),
+          const Text(
+            'Saldo Disponível',
+            style: TextStyle(color: VibeMatchColors.textLow, fontSize: 13),
+          ),
           const SizedBox(height: 8),
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 400),
@@ -174,8 +218,13 @@ class _BalanceCard extends StatelessWidget {
                     foregroundColor: VibeMatchColors.textHigh,
                     side: const BorderSide(color: VibeMatchColors.textLow),
                   ),
-                  onPressed: state.actionPending ? null : () => _showWithdrawSheet(context, state),
-                  icon: const Icon(Icons.account_balance_wallet_outlined, size: 18),
+                  onPressed: state.actionPending
+                      ? null
+                      : () => _showWithdrawSheet(context, state),
+                  icon: const Icon(
+                    Icons.account_balance_wallet_outlined,
+                    size: 18,
+                  ),
                   label: const Text('Sacar'),
                 ),
               ),
@@ -186,7 +235,9 @@ class _BalanceCard extends StatelessWidget {
                     backgroundColor: VibeMatchColors.neonPrimary,
                     foregroundColor: Colors.black,
                   ),
-                  onPressed: state.actionPending ? null : () => _showAdvanceSheet(context),
+                  onPressed: state.actionPending
+                      ? null
+                      : () => _showAdvanceSheet(context),
                   icon: const Icon(Icons.bolt, size: 18),
                   label: const Text('Antecipar'),
                 ),
@@ -204,7 +255,9 @@ class _BalanceCard extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       backgroundColor: VibeMatchColors.surface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (sheetContext) => Padding(
         padding: EdgeInsets.only(
           left: 24,
@@ -216,18 +269,25 @@ class _BalanceCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Sacar saldo', style: VibeMatchTextStyles.heading.copyWith(fontSize: 18)),
+            Text(
+              'Sacar saldo',
+              style: VibeMatchTextStyles.heading.copyWith(fontSize: 18),
+            ),
             const SizedBox(height: 16),
             TextField(
               controller: controller,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               style: const TextStyle(color: Colors.white),
               decoration: const InputDecoration(labelText: 'Valor'),
             ),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                final amount = double.tryParse(controller.text.replaceAll(',', '.'));
+                final amount = double.tryParse(
+                  controller.text.replaceAll(',', '.'),
+                );
                 if (amount == null || amount <= 0) return;
                 Navigator.of(sheetContext).pop();
                 cubit.withdraw(amount);
@@ -246,14 +306,19 @@ class _BalanceCard extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       backgroundColor: VibeMatchColors.surface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (sheetContext) => Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Antecipar Recebíveis', style: VibeMatchTextStyles.heading.copyWith(fontSize: 18)),
+            Text(
+              'Antecipar Recebíveis',
+              style: VibeMatchTextStyles.heading.copyWith(fontSize: 18),
+            ),
             const SizedBox(height: 8),
             const Text(
               'Informe o ID do projeto em Escrow (status FUNDED) para receber agora, com desconto de taxa de risco.',
@@ -263,11 +328,16 @@ class _BalanceCard extends StatelessWidget {
             TextField(
               controller: controller,
               style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(labelText: 'ID do projeto (Escrow)'),
+              decoration: const InputDecoration(
+                labelText: 'ID do projeto (Escrow)',
+              ),
             ),
             const SizedBox(height: 20),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: VibeMatchColors.neonPrimary, foregroundColor: Colors.black),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: VibeMatchColors.neonPrimary,
+                foregroundColor: Colors.black,
+              ),
               onPressed: () {
                 if (controller.text.trim().isEmpty) return;
                 Navigator.of(sheetContext).pop();
@@ -299,22 +369,43 @@ class _BnplCreditCard extends StatelessWidget {
             height: 44,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: const LinearGradient(colors: [Color(0xFF6366F1), Color(0xFF06B6D4)]),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF6366F1), Color(0xFF06B6D4)],
+              ),
             ),
-            child: const Icon(Icons.credit_score, color: Colors.white, size: 22),
+            child: const Icon(
+              Icons.credit_score,
+              color: Colors.white,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Crédito Financiado (BNPL)', style: TextStyle(color: VibeMatchColors.textLow, fontSize: 13)),
+                const Text(
+                  'Crédito Financiado (BNPL)',
+                  style: TextStyle(
+                    color: VibeMatchColors.textLow,
+                    fontSize: 13,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Text(
                   '$symbol${NumberFormat('#,##0').format(limit)} aprovados',
-                  style: VibeMatchTextStyles.subheading.copyWith(fontSize: 17, color: VibeMatchColors.scoreGold),
+                  style: VibeMatchTextStyles.subheading.copyWith(
+                    fontSize: 17,
+                    color: VibeMatchColors.scoreGold,
+                  ),
                 ),
-                const Text('Financie projetos em parcelas — exclusivo para contratantes', style: TextStyle(color: VibeMatchColors.textLow, fontSize: 11)),
+                const Text(
+                  'Financie projetos em parcelas — exclusivo para contratantes',
+                  style: TextStyle(
+                    color: VibeMatchColors.textLow,
+                    fontSize: 11,
+                  ),
+                ),
               ],
             ),
           ),
@@ -344,9 +435,17 @@ class _TimelineTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(item.label, style: VibeMatchTextStyles.subheading.copyWith(fontSize: 14)),
+                  Text(
+                    item.label,
+                    style: VibeMatchTextStyles.subheading.copyWith(
+                      fontSize: 14,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text(labelFor(item.status), style: VibeMatchTextStyles.body.copyWith(fontSize: 12)),
+                  Text(
+                    labelFor(item.status),
+                    style: VibeMatchTextStyles.body.copyWith(fontSize: 12),
+                  ),
                 ],
               ),
             ),

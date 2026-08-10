@@ -34,7 +34,8 @@ class PaywallScreen extends StatefulWidget {
   State<PaywallScreen> createState() => _PaywallScreenState();
 }
 
-class _PaywallScreenState extends State<PaywallScreen> with SingleTickerProviderStateMixin {
+class _PaywallScreenState extends State<PaywallScreen>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _pulseController;
 
   @override
@@ -56,8 +57,10 @@ class _PaywallScreenState extends State<PaywallScreen> with SingleTickerProvider
   bool get _isClient => widget.user.role == UserRole.client;
 
   String get _priceLabel => _isBrazil ? 'R\$149/mês' : r'$49/mo';
-  String get _paymentHint => _isBrazil ? 'Pix ou Cartão' : 'Apple Pay ou Cartão';
-  List<_Benefit> get _benefits => _isClient ? _clientBenefits : _providerBenefits;
+  String get _paymentHint =>
+      _isBrazil ? 'Pix ou Cartão' : 'Apple Pay ou Cartão';
+  List<_Benefit> get _benefits =>
+      _isClient ? _clientBenefits : _providerBenefits;
   String get _planTier => _isClient ? 'PREMIUM_CLIENT' : 'PRO_PROVIDER';
 
   @override
@@ -67,10 +70,14 @@ class _PaywallScreenState extends State<PaywallScreen> with SingleTickerProvider
       body: BlocConsumer<SubscriptionCubit, SubscriptionState>(
         listener: (context, state) {
           if (state is SubscriptionError) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message)));
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(state.message)));
           }
           if (state is SubscriptionCheckoutReady) {
-            Navigator.of(context).pushNamed('/checkout-webview', arguments: state.checkoutUrl);
+            Navigator.of(
+              context,
+            ).pushNamed('/checkout-webview', arguments: state.checkoutUrl);
           }
         },
         builder: (context, state) {
@@ -97,32 +104,50 @@ class _PaywallScreenState extends State<PaywallScreen> with SingleTickerProvider
                       child: const Text(
                         'MatchService Premium',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       '$_priceLabel · $_paymentHint',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: VibeMatchColors.textLow, fontSize: 16),
+                      style: const TextStyle(
+                        color: VibeMatchColors.textLow,
+                        fontSize: 16,
+                      ),
                     ),
                     const SizedBox(height: 28),
                     VibeGlassCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: _benefits
-                            .map((b) => Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 10),
-                                  child: Row(
-                                    children: [
-                                      Icon(b.icon, color: VibeMatchColors.scoreGold, size: 22),
-                                      const SizedBox(width: 14),
-                                      Expanded(
-                                        child: Text(b.label, style: VibeMatchTextStyles.subheading),
+                            .map(
+                              (b) => Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 10,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      b.icon,
+                                      color: VibeMatchColors.scoreGold,
+                                      size: 22,
+                                    ),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Text(
+                                        b.label,
+                                        style: VibeMatchTextStyles.subheading,
                                       ),
-                                    ],
-                                  ),
-                                ))
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
                             .toList(),
                       ),
                     ),
@@ -137,16 +162,21 @@ class _PaywallScreenState extends State<PaywallScreen> with SingleTickerProvider
                         processing: processing,
                         onTap: processing
                             ? null
-                            : () => context.read<SubscriptionCubit>().startCheckout(
-                                  planTier: _planTier,
-                                  currency: _isBrazil ? 'BRL' : 'USD',
-                                ),
+                            : () => context
+                                  .read<SubscriptionCubit>()
+                                  .startCheckout(
+                                    planTier: _planTier,
+                                    currency: _isBrazil ? 'BRL' : 'USD',
+                                  ),
                       ),
                     ),
                     const SizedBox(height: 12),
                     TextButton(
                       onPressed: () => Navigator.of(context).maybePop(),
-                      child: const Text('Agora não', style: TextStyle(color: VibeMatchColors.textLow)),
+                      child: const Text(
+                        'Agora não',
+                        style: TextStyle(color: VibeMatchColors.textLow),
+                      ),
                     ),
                   ],
                 ),
@@ -170,9 +200,15 @@ class _PremiumCta extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: VibeMatchRadii.buttonRadius,
-        gradient: const LinearGradient(colors: [Color(0xFF6366F1), Color(0xFF06B6D4)]),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF6366F1), Color(0xFF06B6D4)],
+        ),
         boxShadow: [
-          BoxShadow(color: VibeMatchColors.neonPrimary.withOpacity(0.45), blurRadius: 20, spreadRadius: 1),
+          BoxShadow(
+            color: VibeMatchColors.neonPrimary.withOpacity(0.45),
+            blurRadius: 20,
+            spreadRadius: 1,
+          ),
         ],
       ),
       child: Material(
@@ -187,11 +223,18 @@ class _PremiumCta extends StatelessWidget {
                   ? const SizedBox(
                       height: 22,
                       width: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : const Text(
                       'Ativar Acesso Premium Instantâneo',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
             ),
           ),

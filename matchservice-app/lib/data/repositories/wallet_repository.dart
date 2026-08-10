@@ -8,20 +8,32 @@ class WalletRepository {
 
   Future<Map<String, dynamic>> advance(String escrowId) async {
     // 403 surfaces here if the caller isn't PRO_PROVIDER — see SubscriptionGuard.
-    final response = await _client.dio.post('/wallet/advance', data: {'escrowId': escrowId});
+    final response = await _client.dio.post(
+      '/wallet/advance',
+      data: {'escrowId': escrowId},
+    );
     return response.data as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> withdraw(double amount) async {
-    final response = await _client.dio.post('/wallet/withdraw', data: {'amount': amount});
+    final response = await _client.dio.post(
+      '/wallet/withdraw',
+      data: {'amount': amount},
+    );
     return response.data as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> financeProject(String escrowProjectId, {int installmentCount = 4}) async {
-    final response = await _client.dio.post('/fintech/finance-project', data: {
-      'escrowProjectId': escrowProjectId,
-      'installmentCount': installmentCount,
-    });
+  Future<Map<String, dynamic>> financeProject(
+    String escrowProjectId, {
+    int installmentCount = 4,
+  }) async {
+    final response = await _client.dio.post(
+      '/fintech/finance-project',
+      data: {
+        'escrowProjectId': escrowProjectId,
+        'installmentCount': installmentCount,
+      },
+    );
     return response.data as Map<String, dynamic>;
   }
 

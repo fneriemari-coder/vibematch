@@ -3,7 +3,10 @@ import '../theme/vibe_match_theme.dart';
 
 /// Elegant warning modal shown when POST /feed/post comes back 422 —
 /// the post was blocked by ai-moderator.service.ts (safety or off-scope).
-Future<void> showModerationBlockedModal(BuildContext context, {String? reason}) {
+Future<void> showModerationBlockedModal(
+  BuildContext context, {
+  String? reason,
+}) {
   return showDialog(
     context: context,
     builder: (context) => Dialog(
@@ -21,10 +24,17 @@ Future<void> showModerationBlockedModal(BuildContext context, {String? reason}) 
                 shape: BoxShape.circle,
                 color: Colors.redAccent.withOpacity(0.15),
               ),
-              child: const Icon(Icons.shield_moon_outlined, color: Colors.redAccent, size: 28),
+              child: const Icon(
+                Icons.shield_moon_outlined,
+                color: Colors.redAccent,
+                size: 28,
+              ),
             ),
             const SizedBox(height: 16),
-            Text('Conteúdo bloqueado', style: VibeMatchTextStyles.heading.copyWith(fontSize: 18)),
+            Text(
+              'Conteúdo bloqueado',
+              style: VibeMatchTextStyles.heading.copyWith(fontSize: 18),
+            ),
             const SizedBox(height: 10),
             const Text(
               'Conteúdo fora de diretrizes. O VIBE MATCH mantém o feed focado estritamente em '

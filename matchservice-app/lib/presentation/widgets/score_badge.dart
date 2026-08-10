@@ -13,7 +13,10 @@ class ScoreBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 12, vertical: compact ? 4 : 6),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 8 : 12,
+        vertical: compact ? 4 : 6,
+      ),
       decoration: BoxDecoration(
         color: Colors.black,
         borderRadius: BorderRadius.circular(999),
@@ -29,7 +32,11 @@ class ScoreBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.bolt, size: compact ? 12 : 14, color: VibeMatchColors.scoreGold),
+          Icon(
+            Icons.bolt,
+            size: compact ? 12 : 14,
+            color: VibeMatchColors.scoreGold,
+          ),
           const SizedBox(width: 4),
           Text(
             score.toString().padLeft(4, '0'),

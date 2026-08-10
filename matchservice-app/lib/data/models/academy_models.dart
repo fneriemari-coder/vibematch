@@ -17,7 +17,8 @@ class CourseModuleItem {
   // or point at a non-playable stub. The player below must fail gracefully.
   final String? videoUrl;
 
-  factory CourseModuleItem.fromJson(Map<String, dynamic> json) => CourseModuleItem(
+  factory CourseModuleItem.fromJson(Map<String, dynamic> json) =>
+      CourseModuleItem(
         id: json['id'] as String,
         orderIndex: json['orderIndex'] as int? ?? 0,
         title: json['title'] as String? ?? '',
@@ -43,16 +44,18 @@ class CourseDetail {
   final List<CourseModuleItem> modules;
 
   factory CourseDetail.fromJson(Map<String, dynamic> json) => CourseDetail(
-        id: json['id'] as String,
-        title: json['title'] as String? ?? '',
-        description: json['description'] as String? ?? '',
-        instructorName:
-            (json['instructor'] as Map<String, dynamic>?)?['profile']?['name'] as String? ?? 'Instrutor',
-        materialDownloadUrl: json['materialDownloadUrl'] as String?,
-        modules: (json['modules'] as List? ?? [])
-            .map((e) => CourseModuleItem.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
+    id: json['id'] as String,
+    title: json['title'] as String? ?? '',
+    description: json['description'] as String? ?? '',
+    instructorName:
+        (json['instructor'] as Map<String, dynamic>?)?['profile']?['name']
+            as String? ??
+        'Instrutor',
+    materialDownloadUrl: json['materialDownloadUrl'] as String?,
+    modules: (json['modules'] as List? ?? [])
+        .map((e) => CourseModuleItem.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
 }
 
 /// Recommended provider — feeds the "profissionais recomendados" section
@@ -77,7 +80,8 @@ class RecommendedProvider {
   final String? hourlyRate;
   final String rateCurrency;
 
-  factory RecommendedProvider.fromJson(Map<String, dynamic> json) => RecommendedProvider(
+  factory RecommendedProvider.fromJson(Map<String, dynamic> json) =>
+      RecommendedProvider(
         userId: json['userId'] as String,
         name: json['name'] as String? ?? '',
         bio: json['bio'] as String? ?? '',
@@ -94,8 +98,10 @@ class CourseConnections {
   final List<String> skillsTaught;
   final List<RecommendedProvider> profiles;
 
-  factory CourseConnections.fromJson(Map<String, dynamic> json) => CourseConnections(
-        skillsTaught: (json['skillsTaught'] as List?)?.cast<String>() ?? const [],
+  factory CourseConnections.fromJson(Map<String, dynamic> json) =>
+      CourseConnections(
+        skillsTaught:
+            (json['skillsTaught'] as List?)?.cast<String>() ?? const [],
         profiles: (json['profiles'] as List? ?? [])
             .map((e) => RecommendedProvider.fromJson(e as Map<String, dynamic>))
             .toList(),

@@ -34,16 +34,17 @@ class WalletLoaded extends WalletState {
   final int kScore;
   final double bnplCreditLimit;
   final WalletTimeline timeline;
-  final bool actionPending; // true mid advance/withdraw — drives the balance-update animation
+  final bool
+  actionPending; // true mid advance/withdraw — drives the balance-update animation
 
   WalletLoaded copyWith({double? balance, bool? actionPending}) => WalletLoaded(
-        balance: balance ?? this.balance,
-        currency: currency,
-        kScore: kScore,
-        bnplCreditLimit: bnplCreditLimit,
-        timeline: timeline,
-        actionPending: actionPending ?? this.actionPending,
-      );
+    balance: balance ?? this.balance,
+    currency: currency,
+    kScore: kScore,
+    bnplCreditLimit: bnplCreditLimit,
+    timeline: timeline,
+    actionPending: actionPending ?? this.actionPending,
+  );
 }
 
 class WalletError extends WalletState {
@@ -63,7 +64,9 @@ class WalletCubit extends Cubit<WalletState> {
   }) async {
     emit(const WalletLoading());
     try {
-      final scoreJson = await _repository.getScore(userId).catchError((_) => <String, dynamic>{});
+      final scoreJson = await _repository
+          .getScore(userId)
+          .catchError((_) => <String, dynamic>{});
       final timeline = await _repository.getTimeline();
       final kScore = (scoreJson['financialHealthScore'] as int?) ?? 500;
 
@@ -73,13 +76,15 @@ class WalletCubit extends Cubit<WalletState> {
       // still the source of truth; this is just a UI-facing estimate).
       final bnplCreditLimit = (kScore / 1000) * 20000;
 
-      emit(WalletLoaded(
-        balance: initialBalance,
-        currency: currency,
-        kScore: kScore,
-        bnplCreditLimit: bnplCreditLimit,
-        timeline: timeline,
-      ));
+      emit(
+        WalletLoaded(
+          balance: initialBalance,
+          currency: currency,
+          kScore: kScore,
+          bnplCreditLimit: bnplCreditLimit,
+          timeline: timeline,
+        ),
+      );
     } catch (e) {
       emit(WalletError(e.toString()));
     }
@@ -91,7 +96,8 @@ class WalletCubit extends Cubit<WalletState> {
     emit(current.copyWith(actionPending: true));
     try {
       final result = await _repository.advance(escrowId);
-      final newBalance = double.tryParse('${result['walletBalance']}') ?? current.balance;
+      final newBalance =
+          double.tryParse('${result['walletBalance']}') ?? current.balance;
       emit(current.copyWith(balance: newBalance, actionPending: false));
     } catch (e) {
       emit(current.copyWith(actionPending: false));
@@ -106,7 +112,9 @@ class WalletCubit extends Cubit<WalletState> {
     emit(current.copyWith(actionPending: true));
     try {
       final result = await _repository.withdraw(amount);
-      final newBalance = double.tryParse('${result['walletBalance']}') ?? (current.balance - amount);
+      final newBalance =
+          double.tryParse('${result['walletBalance']}') ??
+          (current.balance - amount);
       emit(current.copyWith(balance: newBalance, actionPending: false));
     } catch (e) {
       emit(current.copyWith(actionPending: false));

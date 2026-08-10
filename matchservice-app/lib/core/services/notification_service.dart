@@ -22,8 +22,10 @@ class NotificationService {
   final AuthRepository _authRepository;
   final GlobalKey<NavigatorState> navigatorKey;
 
-  final _foregroundMessageController = StreamController<RemoteMessage>.broadcast();
-  Stream<RemoteMessage> get foregroundMessages => _foregroundMessageController.stream;
+  final _foregroundMessageController =
+      StreamController<RemoteMessage>.broadcast();
+  Stream<RemoteMessage> get foregroundMessages =>
+      _foregroundMessageController.stream;
 
   Future<void> initialize() async {
     final messaging = FirebaseMessaging.instance;
@@ -77,7 +79,10 @@ class NotificationService {
     final courseId = message.data['course_id'];
     final redirect = message.data['redirect'];
     if (courseId != null && redirect == 'VIBE_ACADEMY_COURSE') {
-      navigatorKey.currentState?.pushNamed('/vibe-academy', arguments: {'courseId': courseId});
+      navigatorKey.currentState?.pushNamed(
+        '/vibe-academy',
+        arguments: {'courseId': courseId},
+      );
       return;
     }
 
@@ -87,7 +92,11 @@ class NotificationService {
 
     navigatorKey.currentState?.pushNamed(
       '/discovery-feed',
-      arguments: {'focusPostId': postId, 'modeTarget': modeTarget, 'ctaActive': true},
+      arguments: {
+        'focusPostId': postId,
+        'modeTarget': modeTarget,
+        'ctaActive': true,
+      },
     );
   }
 
@@ -97,7 +106,12 @@ class NotificationService {
 /// Discreet, elegant in-app banner for `onMessage` — does not interrupt the
 /// active swipe/feed interaction underneath it.
 class TrendAlertBanner extends StatelessWidget {
-  const TrendAlertBanner({super.key, required this.title, required this.body, this.onTap});
+  const TrendAlertBanner({
+    super.key,
+    required this.title,
+    required this.body,
+    this.onTap,
+  });
 
   final String title;
   final String body;
@@ -117,7 +131,9 @@ class TrendAlertBanner extends StatelessWidget {
             decoration: BoxDecoration(
               color: const Color(0xFF16161A),
               borderRadius: BorderRadius.circular(14),
-              boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 12)],
+              boxShadow: const [
+                BoxShadow(color: Colors.black45, blurRadius: 12),
+              ],
             ),
             child: Row(
               children: [
@@ -127,8 +143,20 @@ class TrendAlertBanner extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      Text(body, style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 12)),
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        body,
+                        style: const TextStyle(
+                          color: Color(0xFF9CA3AF),
+                          fontSize: 12,
+                        ),
+                      ),
                     ],
                   ),
                 ),

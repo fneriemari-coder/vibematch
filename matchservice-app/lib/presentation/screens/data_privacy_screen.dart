@@ -30,7 +30,9 @@ class _DataPrivacyScreenState extends State<DataPrivacyScreen> {
       setState(() => _exportedJson = pretty);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Falha ao exportar dados: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Falha ao exportar dados: $e')));
     } finally {
       if (mounted) setState(() => _exporting = false);
     }
@@ -42,7 +44,10 @@ class _DataPrivacyScreenState extends State<DataPrivacyScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: VibeMatchColors.surface,
-        title: const Text('Excluir minha conta', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Excluir minha conta',
+          style: TextStyle(color: Colors.white),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -58,15 +63,23 @@ class _DataPrivacyScreenState extends State<DataPrivacyScreen> {
               controller: passwordController,
               obscureText: true,
               style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(labelText: 'Confirme sua senha'),
+              decoration: const InputDecoration(
+                labelText: 'Confirme sua senha',
+              ),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Excluir', style: TextStyle(color: Colors.redAccent)),
+            child: const Text(
+              'Excluir',
+              style: TextStyle(color: Colors.redAccent),
+            ),
           ),
         ],
       ),
@@ -81,8 +94,12 @@ class _DataPrivacyScreenState extends State<DataPrivacyScreen> {
       await context.read<AuthCubit>().logout();
     } on DioException catch (e) {
       if (!mounted) return;
-      final message = e.response?.data?['message']?.toString() ?? 'Não foi possível excluir a conta.';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      final message =
+          e.response?.data?['message']?.toString() ??
+          'Não foi possível excluir a conta.';
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     } finally {
       if (mounted) setState(() => _deleting = false);
     }
@@ -106,7 +123,11 @@ class _DataPrivacyScreenState extends State<DataPrivacyScreen> {
           ElevatedButton(
             onPressed: _exporting ? null : _exportData,
             child: _exporting
-                ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                ? const SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Text('Baixar meus dados'),
           ),
           if (_exportedJson != null) ...[
@@ -119,7 +140,11 @@ class _DataPrivacyScreenState extends State<DataPrivacyScreen> {
               ),
               child: SelectableText(
                 _exportedJson!,
-                style: const TextStyle(color: Colors.white70, fontFamily: 'monospace', fontSize: 11),
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontFamily: 'monospace',
+                  fontSize: 11,
+                ),
               ),
             ),
           ],
@@ -135,7 +160,11 @@ class _DataPrivacyScreenState extends State<DataPrivacyScreen> {
             onPressed: _deleting ? null : _confirmDelete,
             style: OutlinedButton.styleFrom(foregroundColor: Colors.redAccent),
             child: _deleting
-                ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                ? const SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Text('Excluir minha conta'),
           ),
         ],

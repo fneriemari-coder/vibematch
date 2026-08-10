@@ -34,18 +34,25 @@ Future<void> main() async {
   try {
     await Firebase.initializeApp();
   } catch (e) {
-    debugPrint('Firebase.initializeApp() failed — push notifications disabled: $e');
+    debugPrint(
+      'Firebase.initializeApp() failed — push notifications disabled: $e',
+    );
   }
 
   final dioClient = DioClient();
   final authRepository = AuthRepository(dioClient);
-  final notificationService = NotificationService(authRepository, navigatorKey: navigatorKey);
+  final notificationService = NotificationService(
+    authRepository,
+    navigatorKey: navigatorKey,
+  );
 
-  runApp(MatchServiceApp(
-    dioClient: dioClient,
-    authRepository: authRepository,
-    notificationService: notificationService,
-  ));
+  runApp(
+    MatchServiceApp(
+      dioClient: dioClient,
+      authRepository: authRepository,
+      notificationService: notificationService,
+    ),
+  );
 }
 
 class MatchServiceApp extends StatefulWidget {
@@ -72,7 +79,9 @@ class _MatchServiceAppState extends State<MatchServiceApp> {
     // Firebase project this throws immediately (FirebaseMessaging.instance
     // needs an initialized app); don't let that take the rest of the UI down.
     widget.notificationService.initialize().catchError((e) {
-      debugPrint('NotificationService.initialize() failed — push notifications disabled: $e');
+      debugPrint(
+        'NotificationService.initialize() failed — push notifications disabled: $e',
+      );
     });
     widget.notificationService.foregroundMessages.listen((message) {
       final banner = message.notification;
@@ -102,7 +111,9 @@ class _MatchServiceAppState extends State<MatchServiceApp> {
         RepositoryProvider(create: (_) => AdminRepository(widget.dioClient)),
         RepositoryProvider(create: (_) => AcademyRepository(widget.dioClient)),
         RepositoryProvider(create: (_) => MediaRepository(widget.dioClient)),
-        RepositoryProvider(create: (_) => MastermindRepository(widget.dioClient)),
+        RepositoryProvider(
+          create: (_) => MastermindRepository(widget.dioClient),
+        ),
       ],
       child: BlocProvider(
         create: (context) => AuthCubit(widget.authRepository)..bootstrap(),
@@ -115,12 +126,15 @@ class _MatchServiceAppState extends State<MatchServiceApp> {
             if (settings.name == '/discovery-feed') {
               final args = settings.arguments as Map<String, dynamic>?;
               return MaterialPageRoute(
-                builder: (_) => DiscoveryFeedScreen(focusPostId: args?['focusPostId'] as String?),
+                builder: (_) => DiscoveryFeedScreen(
+                  focusPostId: args?['focusPostId'] as String?,
+                ),
               );
             }
             if (settings.name == '/privacy') {
               return MaterialPageRoute(
-                builder: (_) => DataPrivacyScreen(authRepository: widget.authRepository),
+                builder: (_) =>
+                    DataPrivacyScreen(authRepository: widget.authRepository),
               );
             }
             if (settings.name == '/vibe-academy') {
@@ -146,7 +160,11 @@ class _MatchServiceAppState extends State<MatchServiceApp> {
               }
               return const Scaffold(
                 backgroundColor: VibeMatchColors.background,
-                body: Center(child: CircularProgressIndicator(color: VibeMatchColors.neonPrimary)),
+                body: Center(
+                  child: CircularProgressIndicator(
+                    color: VibeMatchColors.neonPrimary,
+                  ),
+                ),
               );
             },
           ),
@@ -186,7 +204,9 @@ class _LoginScreenState extends State<_LoginScreen> {
           child: BlocConsumer<AuthCubit, AuthState>(
             listener: (context, state) {
               if (state is AuthError) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message)));
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text(state.message)));
               }
             },
             builder: (context, state) {
@@ -194,7 +214,10 @@ class _LoginScreenState extends State<_LoginScreen> {
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('MatchService', style: VibeMatchTextStyles.heading.copyWith(fontSize: 30)),
+                  Text(
+                    'MatchService',
+                    style: VibeMatchTextStyles.heading.copyWith(fontSize: 30),
+                  ),
                   const SizedBox(height: 32),
                   TextField(
                     controller: _email,
@@ -212,14 +235,23 @@ class _LoginScreenState extends State<_LoginScreen> {
                   ElevatedButton(
                     onPressed: loading
                         ? null
-                        : () => context.read<AuthCubit>().login(_email.text.trim(), _password.text),
+                        : () => context.read<AuthCubit>().login(
+                            _email.text.trim(),
+                            _password.text,
+                          ),
                     child: loading
-                        ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                        ? const SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
                         : const Text('Entrar'),
                   ),
                   const SizedBox(height: 8),
                   TextButton(
-                    onPressed: loading ? null : () => _showForgotPasswordDialog(context),
+                    onPressed: loading
+                        ? null
+                        : () => _showForgotPasswordDialog(context),
                     child: const Text('Esqueci minha senha'),
                   ),
                 ],
@@ -239,14 +271,20 @@ class _LoginScreenState extends State<_LoginScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: VibeMatchColors.surface,
-        title: const Text('Esqueci minha senha', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Esqueci minha senha',
+          style: TextStyle(color: Colors.white),
+        ),
         content: TextField(
           controller: emailController,
           style: const TextStyle(color: Colors.white),
           decoration: const InputDecoration(labelText: 'Email'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancelar'),
+          ),
           TextButton(
             onPressed: () async {
               final email = emailController.text.trim();
@@ -261,7 +299,9 @@ class _LoginScreenState extends State<_LoginScreen> {
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Se este e-mail existir, enviamos um link de redefinição.'),
+                    content: Text(
+                      'Se este e-mail existir, enviamos um link de redefinição.',
+                    ),
                   ),
                 );
               }

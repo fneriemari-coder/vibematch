@@ -9,7 +9,11 @@ import '../../data/repositories/post_repository.dart';
 /// straight to S3 via MediaRepository before the post itself is created),
 /// then POST /feed/post -> 422 -> showModerationBlockedModal path.
 class CreatePostScreen extends StatefulWidget {
-  const CreatePostScreen({super.key, required this.postRepository, required this.mediaRepository});
+  const CreatePostScreen({
+    super.key,
+    required this.postRepository,
+    required this.mediaRepository,
+  });
 
   final PostRepository postRepository;
   final MediaRepository mediaRepository;
@@ -27,7 +31,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   bool _uploadingMedia = false;
 
   Future<void> _pickImage() async {
-    final file = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 90);
+    final file = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 90,
+    );
     if (file != null) setState(() => _pickedMedia = file);
   }
 
@@ -43,7 +50,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       final media = _pickedMedia;
       if (media != null) {
         setState(() => _uploadingMedia = true);
-        mediaUrl = await widget.mediaRepository.uploadPickedFile(media, MediaPurpose.discoveryPost);
+        mediaUrl = await widget.mediaRepository.uploadPickedFile(
+          media,
+          MediaPurpose.discoveryPost,
+        );
         setState(() => _uploadingMedia = false);
       }
 
@@ -51,10 +61,16 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         title: _titleController.text.trim(),
         contentText: _contentController.text.trim(),
         mediaUrl: mediaUrl,
-        tags: _tagsController.text.split(',').map((t) => t.trim().toUpperCase()).where((t) => t.isNotEmpty).toList(),
+        tags: _tagsController.text
+            .split(',')
+            .map((t) => t.trim().toUpperCase())
+            .where((t) => t.isNotEmpty)
+            .toList(),
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Post publicado!')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Post publicado!')));
       Navigator.of(context).pop();
     } on PostBlockedException catch (e) {
       if (!mounted) return;
@@ -63,7 +79,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
     } finally {
-      if (mounted) setState(() { _submitting = false; _uploadingMedia = false; });
+      if (mounted)
+        setState(() {
+          _submitting = false;
+          _uploadingMedia = false;
+        });
     }
   }
 
@@ -102,7 +122,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             TextField(
               controller: _tagsController,
               style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(labelText: 'Tags (separadas por vírgula)'),
+              decoration: const InputDecoration(
+                labelText: 'Tags (separadas por vírgula)',
+              ),
             ),
             const SizedBox(height: 16),
             Row(
@@ -133,7 +155,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             ElevatedButton(
               onPressed: busy ? null : _submit,
               child: busy
-                  ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : const Text('Publicar'),
             ),
           ],

@@ -39,7 +39,9 @@ class VibeGlassCard extends StatelessWidget {
             color: VibeMatchColors.surface.withOpacity(0.6),
             borderRadius: radius,
             border: Border.all(
-              color: VibeMatchColors.neonPrimary.withOpacity(highlighted ? 1.0 : 0.5),
+              color: VibeMatchColors.neonPrimary.withOpacity(
+                highlighted ? 1.0 : 0.5,
+              ),
               width: 1,
             ),
           ),

@@ -7,16 +7,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// URL only ever live in one place.
 class DioClient {
   DioClient({String? baseUrl})
-      : dio = Dio(
-          BaseOptions(
-            baseUrl: baseUrl ?? const String.fromEnvironment(
-              'API_BASE_URL',
-              defaultValue: 'http://localhost:3000',
-            ),
-            connectTimeout: const Duration(seconds: 15),
-            receiveTimeout: const Duration(seconds: 15),
-          ),
-        ) {
+    : dio = Dio(
+        BaseOptions(
+          baseUrl:
+              baseUrl ??
+              const String.fromEnvironment(
+                'API_BASE_URL',
+                defaultValue: 'http://localhost:3000',
+              ),
+          connectTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(seconds: 15),
+        ),
+      ) {
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
@@ -33,8 +35,11 @@ class DioClient {
           // /auth/* itself, means the session is actually dead — surface it
           // so AuthCubit logs the user out instead of retrying forever.
           final isAuthRoute = error.requestOptions.path.startsWith('/auth/');
-          final alreadyRetried = error.requestOptions.extra['retriedAfterRefresh'] == true;
-          if (error.response?.statusCode != 401 || isAuthRoute || alreadyRetried) {
+          final alreadyRetried =
+              error.requestOptions.extra['retriedAfterRefresh'] == true;
+          if (error.response?.statusCode != 401 ||
+              isAuthRoute ||
+              alreadyRetried) {
             handler.next(error);
             return;
           }
@@ -69,7 +74,9 @@ class DioClient {
   Future<String?>? _refreshInFlight;
 
   Future<String?> _refreshAccessToken() {
-    return _refreshInFlight ??= _doRefresh().whenComplete(() => _refreshInFlight = null);
+    return _refreshInFlight ??= _doRefresh().whenComplete(
+      () => _refreshInFlight = null,
+    );
   }
 
   Future<String?> _doRefresh() async {
@@ -81,7 +88,10 @@ class DioClient {
       // A bare Dio instance — going through `dio` here would recurse into
       // this same onError handler on failure.
       final plainDio = Dio(BaseOptions(baseUrl: dio.options.baseUrl));
-      final response = await plainDio.post('/auth/refresh', data: {'refreshToken': refreshToken});
+      final response = await plainDio.post(
+        '/auth/refresh',
+        data: {'refreshToken': refreshToken},
+      );
       final newAccess = response.data['accessToken'] as String;
       final newRefresh = response.data['refreshToken'] as String;
       await persistToken(newAccess);

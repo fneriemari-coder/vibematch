@@ -31,7 +31,8 @@ class SwipeCard extends StatelessWidget {
               CachedNetworkImage(
                 imageUrl: portfolioUrl,
                 fit: BoxFit.cover,
-                errorWidget: (_, __, ___) => const ColoredBox(color: VibeMatchColors.surface),
+                errorWidget: (_, __, ___) =>
+                    const ColoredBox(color: VibeMatchColors.surface),
               )
             else
               const ColoredBox(color: VibeMatchColors.surface),
@@ -54,7 +55,11 @@ class SwipeCard extends StatelessWidget {
               const Positioned(
                 top: 16,
                 left: 16,
-                child: Icon(Icons.verified, color: VibeMatchColors.neonPrimary, size: 22),
+                child: Icon(
+                  Icons.verified,
+                  color: VibeMatchColors.neonPrimary,
+                  size: 22,
+                ),
               ),
             Positioned(
               left: 16,
@@ -77,22 +82,41 @@ class SwipeCard extends StatelessWidget {
                     runSpacing: 6,
                     children: candidate.skills
                         .take(4)
-                        .map((s) => Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: VibeMatchColors.neonPrimary.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(999),
-                                border: Border.all(color: VibeMatchColors.neonPrimary.withOpacity(0.4)),
+                        .map(
+                          (s) => Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: VibeMatchColors.neonPrimary.withOpacity(
+                                0.15,
                               ),
-                              child: Text(s, style: const TextStyle(color: VibeMatchColors.neonPrimary, fontSize: 11)),
-                            ))
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                color: VibeMatchColors.neonPrimary.withOpacity(
+                                  0.4,
+                                ),
+                              ),
+                            ),
+                            child: Text(
+                              s,
+                              style: const TextStyle(
+                                color: VibeMatchColors.neonPrimary,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        )
                         .toList(),
                   ),
                   if (candidate.hourlyRate != null) ...[
                     const SizedBox(height: 10),
                     Text(
                       '${candidate.hourlyRate}/${candidate.rateCurrency} · hora',
-                      style: VibeMatchTextStyles.subheading.copyWith(color: VibeMatchColors.scoreGold),
+                      style: VibeMatchTextStyles.subheading.copyWith(
+                        color: VibeMatchColors.scoreGold,
+                      ),
                     ),
                   ],
                   if (candidate.distanceMeters != null) ...[

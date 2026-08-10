@@ -2,16 +2,16 @@ enum MetricsPeriod { d7, d30, quarter }
 
 extension MetricsPeriodApi on MetricsPeriod {
   String get apiValue => switch (this) {
-        MetricsPeriod.d7 => '7d',
-        MetricsPeriod.d30 => '30d',
-        MetricsPeriod.quarter => 'quarter',
-      };
+    MetricsPeriod.d7 => '7d',
+    MetricsPeriod.d30 => '30d',
+    MetricsPeriod.quarter => 'quarter',
+  };
 
   String get label => switch (this) {
-        MetricsPeriod.d7 => '7 dias',
-        MetricsPeriod.d30 => '30 dias',
-        MetricsPeriod.quarter => 'Trimestre',
-      };
+    MetricsPeriod.d7 => '7 dias',
+    MetricsPeriod.d30 => '30 dias',
+    MetricsPeriod.quarter => 'Trimestre',
+  };
 }
 
 class CurrencyAmounts {
@@ -20,7 +20,8 @@ class CurrencyAmounts {
   final double usd;
   final double brl;
 
-  factory CurrencyAmounts.fromJson(Map<String, dynamic> json) => CurrencyAmounts(
+  factory CurrencyAmounts.fromJson(Map<String, dynamic> json) =>
+      CurrencyAmounts(
         usd: (json['USD'] as num?)?.toDouble() ?? 0,
         brl: (json['BRL'] as num?)?.toDouble() ?? 0,
       );
@@ -43,7 +44,8 @@ class RevenueBreakdown {
   final double course;
   final double total;
 
-  factory RevenueBreakdown.fromJson(Map<String, dynamic> json) => RevenueBreakdown(
+  factory RevenueBreakdown.fromJson(Map<String, dynamic> json) =>
+      RevenueBreakdown(
         escrowNominal: (json['escrowNominal'] as num?)?.toDouble() ?? 0,
         advance: (json['advance'] as num?)?.toDouble() ?? 0,
         bnpl: (json['bnpl'] as num?)?.toDouble() ?? 0,
@@ -54,15 +56,20 @@ class RevenueBreakdown {
 }
 
 class ChurnMetrics {
-  const ChurnMetrics({required this.subscriptionPastDueRatePercent, required this.bnplInstallmentFailureRatePercent});
+  const ChurnMetrics({
+    required this.subscriptionPastDueRatePercent,
+    required this.bnplInstallmentFailureRatePercent,
+  });
 
   final double subscriptionPastDueRatePercent;
   final double bnplInstallmentFailureRatePercent;
 
   factory ChurnMetrics.fromJson(Map<String, dynamic> json) => ChurnMetrics(
-        subscriptionPastDueRatePercent: (json['subscriptionPastDueRatePercent'] as num?)?.toDouble() ?? 0,
-        bnplInstallmentFailureRatePercent: (json['bnplInstallmentFailureRatePercent'] as num?)?.toDouble() ?? 0,
-      );
+    subscriptionPastDueRatePercent:
+        (json['subscriptionPastDueRatePercent'] as num?)?.toDouble() ?? 0,
+    bnplInstallmentFailureRatePercent:
+        (json['bnplInstallmentFailureRatePercent'] as num?)?.toDouble() ?? 0,
+  );
 }
 
 class LiquidityMetrics {
@@ -82,7 +89,8 @@ class LiquidityMetrics {
   final int lowScoreProviderCount;
   final int accountsUnderReview;
 
-  factory LiquidityMetrics.fromJson(Map<String, dynamic> json) => LiquidityMetrics(
+  factory LiquidityMetrics.fromJson(Map<String, dynamic> json) =>
+      LiquidityMetrics(
         activeMatches: json['activeMatches'] as int? ?? 0,
         completedProjects: json['completedProjects'] as int? ?? 0,
         avgTimeToMatchSeconds: json['avgTimeToMatchSeconds'] as int? ?? 0,
@@ -115,10 +123,16 @@ class DashboardMetrics {
     return DashboardMetrics(
       mrr: CurrencyAmounts.fromJson(financial['mrr'] as Map<String, dynamic>),
       gmv: CurrencyAmounts.fromJson(financial['gmv'] as Map<String, dynamic>),
-      netRevenueUsd: RevenueBreakdown.fromJson(netRevenue['USD'] as Map<String, dynamic>),
-      netRevenueBrl: RevenueBreakdown.fromJson(netRevenue['BRL'] as Map<String, dynamic>),
+      netRevenueUsd: RevenueBreakdown.fromJson(
+        netRevenue['USD'] as Map<String, dynamic>,
+      ),
+      netRevenueBrl: RevenueBreakdown.fromJson(
+        netRevenue['BRL'] as Map<String, dynamic>,
+      ),
       churn: ChurnMetrics.fromJson(financial['churn'] as Map<String, dynamic>),
-      liquidity: LiquidityMetrics.fromJson(json['liquidity'] as Map<String, dynamic>),
+      liquidity: LiquidityMetrics.fromJson(
+        json['liquidity'] as Map<String, dynamic>,
+      ),
     );
   }
 }
