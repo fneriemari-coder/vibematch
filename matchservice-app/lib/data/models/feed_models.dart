@@ -52,6 +52,21 @@ class DiscoveryFeedItem {
       );
 }
 
+/// GET /feed/discover response — cursor pagination, not offset (see
+/// cursor.util.ts server-side): `nextCursor` is opaque, pass it back
+/// verbatim on the next request; null means the feed is exhausted.
+class DiscoveryFeedPage {
+  const DiscoveryFeedPage({required this.items, required this.nextCursor});
+
+  final List<DiscoveryFeedItem> items;
+  final String? nextCursor;
+
+  factory DiscoveryFeedPage.fromJson(Map<String, dynamic> json) => DiscoveryFeedPage(
+        items: (json['items'] as List).map((e) => DiscoveryFeedItem.fromJson(e as Map<String, dynamic>)).toList(),
+        nextCursor: json['nextCursor'] as String?,
+      );
+}
+
 class AiTranslateResult {
   const AiTranslateResult({
     required this.interpretedNeeds,

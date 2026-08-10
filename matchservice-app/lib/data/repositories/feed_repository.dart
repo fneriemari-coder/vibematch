@@ -6,16 +6,14 @@ class FeedRepository {
 
   final DioClient _client;
 
-  Future<List<DiscoveryFeedItem>> discover({double? lat, double? lng, int limit = 20, int offset = 0}) async {
+  Future<DiscoveryFeedPage> discover({double? lat, double? lng, int limit = 20, String? cursor}) async {
     final response = await _client.dio.get('/feed/discover', queryParameters: {
       if (lat != null) 'lat': lat,
       if (lng != null) 'lng': lng,
       'limit': limit,
-      'offset': offset,
+      if (cursor != null) 'cursor': cursor,
     });
-    return (response.data as List)
-        .map((e) => DiscoveryFeedItem.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return DiscoveryFeedPage.fromJson(response.data as Map<String, dynamic>);
   }
 
   Future<AiTranslateResult> translateIntent(String rawInput, {double? lat, double? lng}) async {

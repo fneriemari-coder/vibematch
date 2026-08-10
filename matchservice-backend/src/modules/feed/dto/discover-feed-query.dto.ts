@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsLatitude, IsLongitude, IsNumber, IsOptional, Max, Min, ValidateIf } from 'class-validator';
+import { IsLatitude, IsLongitude, IsNumber, IsOptional, IsString, Max, Min, ValidateIf } from 'class-validator';
 
 export class DiscoverFeedQueryDto {
   @ValidateIf((o) => o.lng !== undefined)
@@ -19,9 +19,8 @@ export class DiscoverFeedQueryDto {
   @Max(50)
   limit?: number = 20;
 
+  /** Opaque cursor from the previous page's response — omit for the first page. See cursor.util.ts. */
   @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
-  offset?: number = 0;
+  @IsString()
+  cursor?: string;
 }

@@ -46,14 +46,17 @@ class FeedCubit extends Cubit<FeedState> {
   List<DiscoveryFeedItem> _items = [];
   double? _lat;
   double? _lng;
+  String? _nextCursor;
 
   Future<void> loadInitial({double? lat, double? lng}) async {
     _lat = lat;
     _lng = lng;
     emit(const FeedLoading([]));
     try {
-      _items = await _repository.discover(lat: lat, lng: lng, limit: _pageSize, offset: 0);
-      emit(FeedLoaded(_items, hasMore: _items.length == _pageSize));
+      final page = await _repository.discover(lat: lat, lng: lng, limit: _pageSize);
+      _items = page.items;
+      _nextCursor = page.nextCursor;
+      emit(FeedLoaded(_items, hasMore: _nextCursor != null));
     } catch (e) {
       emit(FeedError(e.toString()));
     }
@@ -63,14 +66,15 @@ class FeedCubit extends Cubit<FeedState> {
     if (state is! FeedLoaded || !(state as FeedLoaded).hasMore) return;
     emit(FeedLoading(_items));
     try {
-      final next = await _repository.discover(
+      final page = await _repository.discover(
         lat: _lat,
         lng: _lng,
         limit: _pageSize,
-        offset: _items.length,
+        cursor: _nextCursor,
       );
-      _items = [..._items, ...next];
-      emit(FeedLoaded(_items, hasMore: next.length == _pageSize));
+      _items = [..._items, ...page.items];
+      _nextCursor = page.nextCursor;
+      emit(FeedLoaded(_items, hasMore: _nextCursor != null));
     } catch (e) {
       emit(FeedError(e.toString()));
     }
