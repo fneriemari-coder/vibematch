@@ -13,7 +13,7 @@ class FeedInitial extends FeedState {
 class FeedLoading extends FeedState {
   const FeedLoading(this.items);
   final List<DiscoveryFeedItem>
-  items; // previous page, kept visible during infinite-scroll load
+      items; // previous page, kept visible during infinite-scroll load
 }
 
 class FeedLoaded extends FeedState {

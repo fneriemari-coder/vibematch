@@ -37,30 +37,30 @@ class VibeMatchTextStyles {
   VibeMatchTextStyles._();
 
   static TextStyle get heading => GoogleFonts.inter(
-    fontSize: 22,
-    fontWeight: FontWeight.bold,
-    color: VibeMatchColors.textHigh,
-    letterSpacing: -0.2,
-  );
+        fontSize: 22,
+        fontWeight: FontWeight.bold,
+        color: VibeMatchColors.textHigh,
+        letterSpacing: -0.2,
+      );
 
   static TextStyle get subheading => GoogleFonts.inter(
-    fontSize: 15,
-    fontWeight: FontWeight.w600,
-    color: VibeMatchColors.textHigh,
-  );
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+        color: VibeMatchColors.textHigh,
+      );
 
   static TextStyle get body => GoogleFonts.inter(
-    fontSize: 14,
-    fontWeight: FontWeight.w400,
-    color: VibeMatchColors.textLow,
-  );
+        fontSize: 14,
+        fontWeight: FontWeight.w400,
+        color: VibeMatchColors.textLow,
+      );
 
   static TextStyle get scoreDigits => GoogleFonts.inter(
-    fontSize: 16,
-    fontWeight: FontWeight.w800,
-    color: VibeMatchColors.scoreGold,
-    letterSpacing: 1.2,
-  );
+        fontSize: 16,
+        fontWeight: FontWeight.w800,
+        color: VibeMatchColors.scoreGold,
+        letterSpacing: 1.2,
+      );
 }
 
 ThemeData buildVibeMatchTheme() {

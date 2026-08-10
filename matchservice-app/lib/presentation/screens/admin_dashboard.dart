@@ -149,9 +149,8 @@ class _PeriodSelector extends StatelessWidget {
                     p.label,
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: isSelected
-                          ? Colors.black
-                          : VibeMatchColors.textHigh,
+                      color:
+                          isSelected ? Colors.black : VibeMatchColors.textHigh,
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
                     ),
@@ -288,7 +287,7 @@ class _RevenueBarChart extends StatelessWidget {
     ];
     final maxY =
         (bars.map((b) => b.value).fold<double>(0, (a, b) => a > b ? a : b)) *
-        1.2;
+            1.2;
 
     return VibeGlassCard(
       child: Column(

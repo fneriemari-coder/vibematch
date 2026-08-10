@@ -5,16 +5,16 @@ AccountStatus accountStatusFromJson(String value) => AccountStatus.values
 
 extension AccountStatusApi on AccountStatus {
   String get apiValue => switch (this) {
-    AccountStatus.active => 'ACTIVE',
-    AccountStatus.underReview => 'UNDER_REVIEW',
-    AccountStatus.suspended => 'SUSPENDED',
-  };
+        AccountStatus.active => 'ACTIVE',
+        AccountStatus.underReview => 'UNDER_REVIEW',
+        AccountStatus.suspended => 'SUSPENDED',
+      };
 
   String get label => switch (this) {
-    AccountStatus.active => 'Ativa',
-    AccountStatus.underReview => 'Em revisão',
-    AccountStatus.suspended => 'Banida',
-  };
+        AccountStatus.active => 'Ativa',
+        AccountStatus.underReview => 'Em revisão',
+        AccountStatus.suspended => 'Banida',
+      };
 }
 
 class AdminUserSummary {
@@ -55,8 +55,7 @@ class AdminUserSummary {
         deletedAt: json['deletedAt'] != null
             ? DateTime.parse(json['deletedAt'] as String)
             : null,
-        name:
-            (json['profile'] as Map<String, dynamic>?)?['name'] as String? ??
+        name: (json['profile'] as Map<String, dynamic>?)?['name'] as String? ??
             '(sem perfil)',
       );
 }

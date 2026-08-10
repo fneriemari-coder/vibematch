@@ -26,10 +26,10 @@ class _SwipeDeckScreenState extends State<SwipeDeckScreen> {
   ) {
     final candidate = candidates[previousIndex];
     context.read<SwipeCubit>().swipe(
-      swipedId: candidate.userId,
-      like: direction == CardSwiperDirection.right,
-      mode: _mode,
-    );
+          swipedId: candidate.userId,
+          like: direction == CardSwiperDirection.right,
+          mode: _mode,
+        );
     return true;
   }
 
@@ -91,9 +91,8 @@ class _SwipeDeckScreenState extends State<SwipeDeckScreen> {
             child: CardSwiper(
               controller: _controller,
               cardsCount: candidates.length,
-              numberOfCardsDisplayed: candidates.length < 3
-                  ? candidates.length
-                  : 3,
+              numberOfCardsDisplayed:
+                  candidates.length < 3 ? candidates.length : 3,
               onSwipe: (previousIndex, currentIndex, direction) =>
                   _onSwipe(previousIndex, currentIndex, direction, candidates),
               cardBuilder: (context, index, _, __) =>

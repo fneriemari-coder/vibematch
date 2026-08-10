@@ -7,18 +7,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// URL only ever live in one place.
 class DioClient {
   DioClient({String? baseUrl})
-    : dio = Dio(
-        BaseOptions(
-          baseUrl:
-              baseUrl ??
-              const String.fromEnvironment(
-                'API_BASE_URL',
-                defaultValue: 'http://localhost:3000',
-              ),
-          connectTimeout: const Duration(seconds: 15),
-          receiveTimeout: const Duration(seconds: 15),
-        ),
-      ) {
+      : dio = Dio(
+          BaseOptions(
+            baseUrl: baseUrl ??
+                const String.fromEnvironment(
+                  'API_BASE_URL',
+                  defaultValue: 'http://localhost:3000',
+                ),
+            connectTimeout: const Duration(seconds: 15),
+            receiveTimeout: const Duration(seconds: 15),
+          ),
+        ) {
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {

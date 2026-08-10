@@ -213,12 +213,12 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => BlocProvider(
-                      create: (context) =>
-                          SwipeCubit(context.read())..loadStack(
-                            result.suggestedMode == 'LOCAL'
-                                ? SwipeMode.local
-                                : SwipeMode.cloud,
-                          ),
+                      create: (context) => SwipeCubit(context.read())
+                        ..loadStack(
+                          result.suggestedMode == 'LOCAL'
+                              ? SwipeMode.local
+                              : SwipeMode.cloud,
+                        ),
                       child: const SwipeDeckScreen(),
                     ),
                   ),

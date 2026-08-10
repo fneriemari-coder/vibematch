@@ -35,16 +35,16 @@ class WalletLoaded extends WalletState {
   final double bnplCreditLimit;
   final WalletTimeline timeline;
   final bool
-  actionPending; // true mid advance/withdraw — drives the balance-update animation
+      actionPending; // true mid advance/withdraw — drives the balance-update animation
 
   WalletLoaded copyWith({double? balance, bool? actionPending}) => WalletLoaded(
-    balance: balance ?? this.balance,
-    currency: currency,
-    kScore: kScore,
-    bnplCreditLimit: bnplCreditLimit,
-    timeline: timeline,
-    actionPending: actionPending ?? this.actionPending,
-  );
+        balance: balance ?? this.balance,
+        currency: currency,
+        kScore: kScore,
+        bnplCreditLimit: bnplCreditLimit,
+        timeline: timeline,
+        actionPending: actionPending ?? this.actionPending,
+      );
 }
 
 class WalletError extends WalletState {
@@ -112,8 +112,7 @@ class WalletCubit extends Cubit<WalletState> {
     emit(current.copyWith(actionPending: true));
     try {
       final result = await _repository.withdraw(amount);
-      final newBalance =
-          double.tryParse('${result['walletBalance']}') ??
+      final newBalance = double.tryParse('${result['walletBalance']}') ??
           (current.balance - amount);
       emit(current.copyWith(balance: newBalance, actionPending: false));
     } catch (e) {

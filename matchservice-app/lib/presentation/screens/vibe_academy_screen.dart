@@ -82,9 +82,8 @@ class _VibeAcademyScreenState extends State<VibeAcademyScreen> {
           }
 
           final course = snapshot.data!;
-          final firstModule = course.modules.isNotEmpty
-              ? course.modules.first
-              : null;
+          final firstModule =
+              course.modules.isNotEmpty ? course.modules.first : null;
 
           return ListView(
             padding: const EdgeInsets.all(16),
@@ -168,13 +167,11 @@ class _LessonPlayerState extends State<_LessonPlayer> {
       return;
     }
     _controller = VideoPlayerController.networkUrl(uri)
-      ..initialize()
-          .then((_) {
-            if (mounted) setState(() {});
-          })
-          .catchError((_) {
-            if (mounted) setState(() => _failed = true);
-          });
+      ..initialize().then((_) {
+        if (mounted) setState(() {});
+      }).catchError((_) {
+        if (mounted) setState(() => _failed = true);
+      });
   }
 
   @override
@@ -201,34 +198,34 @@ class _LessonPlayerState extends State<_LessonPlayer> {
                 ),
               )
             : _controller!.value.isInitialized
-            ? Stack(
-                alignment: Alignment.center,
-                children: [
-                  VideoPlayer(_controller!),
-                  IconButton(
-                    iconSize: 56,
-                    icon: Icon(
-                      _controller!.value.isPlaying
-                          ? Icons.pause_circle
-                          : Icons.play_circle,
-                      color: Colors.white,
+                ? Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      VideoPlayer(_controller!),
+                      IconButton(
+                        iconSize: 56,
+                        icon: Icon(
+                          _controller!.value.isPlaying
+                              ? Icons.pause_circle
+                              : Icons.play_circle,
+                          color: Colors.white,
+                        ),
+                        onPressed: () => setState(() {
+                          _controller!.value.isPlaying
+                              ? _controller!.pause()
+                              : _controller!.play();
+                        }),
+                      ),
+                    ],
+                  )
+                : const ColoredBox(
+                    color: VibeMatchColors.surface,
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: VibeMatchColors.neonPrimary,
+                      ),
                     ),
-                    onPressed: () => setState(() {
-                      _controller!.value.isPlaying
-                          ? _controller!.pause()
-                          : _controller!.play();
-                    }),
                   ),
-                ],
-              )
-            : const ColoredBox(
-                color: VibeMatchColors.surface,
-                child: Center(
-                  child: CircularProgressIndicator(
-                    color: VibeMatchColors.neonPrimary,
-                  ),
-                ),
-              ),
       ),
     );
   }

@@ -1,9 +1,9 @@
 enum UserRole { client, provider, both, admin }
 
 UserRole userRoleFromJson(String value) => UserRole.values.firstWhere(
-  (r) => r.name.toUpperCase() == value,
-  orElse: () => UserRole.client,
-);
+      (r) => r.name.toUpperCase() == value,
+      orElse: () => UserRole.client,
+    );
 
 class AppUser {
   const AppUser({
@@ -21,12 +21,12 @@ class AppUser {
   final double walletBalance;
 
   factory AppUser.fromJson(Map<String, dynamic> json) => AppUser(
-    id: json['id'] as String,
-    email: json['email'] as String,
-    role: userRoleFromJson(json['role'] as String),
-    country: json['country'] as String,
-    walletBalance: double.tryParse('${json['walletBalance'] ?? 0}') ?? 0,
-  );
+        id: json['id'] as String,
+        email: json['email'] as String,
+        role: userRoleFromJson(json['role'] as String),
+        country: json['country'] as String,
+        walletBalance: double.tryParse('${json['walletBalance'] ?? 0}') ?? 0,
+      );
 
   bool get isBrazil => country == 'BR';
 }
@@ -57,15 +57,15 @@ class SwipeCandidate {
   final bool? isProBoosted;
 
   factory SwipeCandidate.fromJson(Map<String, dynamic> json) => SwipeCandidate(
-    userId: json['userId'] as String,
-    name: json['name'] as String? ?? '',
-    bio: json['bio'] as String? ?? '',
-    skills: (json['skills'] as List?)?.cast<String>() ?? const [],
-    averageRating: double.tryParse('${json['averageRating'] ?? 0}') ?? 0,
-    hourlyRate: json['hourlyRate']?.toString(),
-    rateCurrency: json['rateCurrency'] as String? ?? 'USD',
-    financialHealthScore: json['financialHealthScore'] as int?,
-    distanceMeters: (json['distanceMeters'] as num?)?.toDouble(),
-    isProBoosted: json['isProBoosted'] as bool?,
-  );
+        userId: json['userId'] as String,
+        name: json['name'] as String? ?? '',
+        bio: json['bio'] as String? ?? '',
+        skills: (json['skills'] as List?)?.cast<String>() ?? const [],
+        averageRating: double.tryParse('${json['averageRating'] ?? 0}') ?? 0,
+        hourlyRate: json['hourlyRate']?.toString(),
+        rateCurrency: json['rateCurrency'] as String? ?? 'USD',
+        financialHealthScore: json['financialHealthScore'] as int?,
+        distanceMeters: (json['distanceMeters'] as num?)?.toDouble(),
+        isProBoosted: json['isProBoosted'] as bool?,
+      );
 }

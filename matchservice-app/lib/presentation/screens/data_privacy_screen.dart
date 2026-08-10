@@ -94,8 +94,7 @@ class _DataPrivacyScreenState extends State<DataPrivacyScreen> {
       await context.read<AuthCubit>().logout();
     } on DioException catch (e) {
       if (!mounted) return;
-      final message =
-          e.response?.data?['message']?.toString() ??
+      final message = e.response?.data?['message']?.toString() ??
           'Não foi possível excluir a conta.';
       ScaffoldMessenger.of(
         context,

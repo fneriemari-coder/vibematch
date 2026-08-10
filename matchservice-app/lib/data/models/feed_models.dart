@@ -2,10 +2,10 @@ enum SwipeMode { cloud, local, b2b }
 
 extension SwipeModeApi on SwipeMode {
   String get apiValue => switch (this) {
-    SwipeMode.cloud => 'CLOUD',
-    SwipeMode.local => 'LOCAL',
-    SwipeMode.b2b => 'B2B',
-  };
+        SwipeMode.cloud => 'CLOUD',
+        SwipeMode.local => 'LOCAL',
+        SwipeMode.b2b => 'B2B',
+      };
 }
 
 class DiscoveryFeedItem {
@@ -50,7 +50,7 @@ class DiscoveryFeedItem {
             (json['creator'] as Map<String, dynamic>?)?['id'] as String? ?? '',
         creatorName:
             (json['creator'] as Map<String, dynamic>?)?['name'] as String? ??
-            '',
+                '',
         skillTagId: json['skillTagId'] as String?,
         source: json['source'] as String? ?? 'CLOUD',
       );

@@ -2,16 +2,16 @@ enum MetricsPeriod { d7, d30, quarter }
 
 extension MetricsPeriodApi on MetricsPeriod {
   String get apiValue => switch (this) {
-    MetricsPeriod.d7 => '7d',
-    MetricsPeriod.d30 => '30d',
-    MetricsPeriod.quarter => 'quarter',
-  };
+        MetricsPeriod.d7 => '7d',
+        MetricsPeriod.d30 => '30d',
+        MetricsPeriod.quarter => 'quarter',
+      };
 
   String get label => switch (this) {
-    MetricsPeriod.d7 => '7 dias',
-    MetricsPeriod.d30 => '30 dias',
-    MetricsPeriod.quarter => 'Trimestre',
-  };
+        MetricsPeriod.d7 => '7 dias',
+        MetricsPeriod.d30 => '30 dias',
+        MetricsPeriod.quarter => 'Trimestre',
+      };
 }
 
 class CurrencyAmounts {
@@ -65,11 +65,12 @@ class ChurnMetrics {
   final double bnplInstallmentFailureRatePercent;
 
   factory ChurnMetrics.fromJson(Map<String, dynamic> json) => ChurnMetrics(
-    subscriptionPastDueRatePercent:
-        (json['subscriptionPastDueRatePercent'] as num?)?.toDouble() ?? 0,
-    bnplInstallmentFailureRatePercent:
-        (json['bnplInstallmentFailureRatePercent'] as num?)?.toDouble() ?? 0,
-  );
+        subscriptionPastDueRatePercent:
+            (json['subscriptionPastDueRatePercent'] as num?)?.toDouble() ?? 0,
+        bnplInstallmentFailureRatePercent:
+            (json['bnplInstallmentFailureRatePercent'] as num?)?.toDouble() ??
+                0,
+      );
 }
 
 class LiquidityMetrics {

@@ -236,9 +236,9 @@ class _LoginScreenState extends State<_LoginScreen> {
                     onPressed: loading
                         ? null
                         : () => context.read<AuthCubit>().login(
-                            _email.text.trim(),
-                            _password.text,
-                          ),
+                              _email.text.trim(),
+                              _password.text,
+                            ),
                     child: loading
                         ? const SizedBox(
                             height: 18,

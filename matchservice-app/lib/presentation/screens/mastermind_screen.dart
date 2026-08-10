@@ -43,8 +43,7 @@ class _MastermindScreenState extends State<MastermindScreen> {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } on DioException catch (e) {
       if (!mounted) return;
-      final message =
-          e.response?.data?['message']?.toString() ??
+      final message = e.response?.data?['message']?.toString() ??
           'Não foi possível reservar esta sessão.';
       ScaffoldMessenger.of(
         context,
@@ -62,8 +61,7 @@ class _MastermindScreenState extends State<MastermindScreen> {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } on DioException catch (e) {
       if (!mounted) return;
-      final message =
-          e.response?.data?['message']?.toString() ??
+      final message = e.response?.data?['message']?.toString() ??
           'Acesso indisponível no momento.';
       ScaffoldMessenger.of(
         context,
@@ -147,9 +145,8 @@ class _MastermindScreenState extends State<MastermindScreen> {
                                 ),
                                 const SizedBox(width: 8),
                                 ElevatedButton(
-                                  onPressed: busy
-                                      ? null
-                                      : () => _access(session),
+                                  onPressed:
+                                      busy ? null : () => _access(session),
                                   child: busy
                                       ? const SizedBox(
                                           height: 16,

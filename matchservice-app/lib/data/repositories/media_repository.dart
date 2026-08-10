@@ -6,10 +6,10 @@ enum MediaPurpose { discoveryPost, profilePhoto, chatAttachment }
 
 extension on MediaPurpose {
   String get apiValue => switch (this) {
-    MediaPurpose.discoveryPost => 'discovery_post',
-    MediaPurpose.profilePhoto => 'profile_photo',
-    MediaPurpose.chatAttachment => 'chat_attachment',
-  };
+        MediaPurpose.discoveryPost => 'discovery_post',
+        MediaPurpose.profilePhoto => 'profile_photo',
+        MediaPurpose.chatAttachment => 'chat_attachment',
+      };
 }
 
 /// Presigns a direct-to-S3 upload (POST /media/presigned-upload, JWT-authed)

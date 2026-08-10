@@ -28,8 +28,7 @@ class MastermindSession {
         accessFee: json['accessFee']?.toString() ?? '0',
         currency: json['currency'] as String? ?? 'USD',
         scheduledFor: DateTime.parse(json['scheduledFor'] as String),
-        hostName:
-            (json['host'] as Map<String, dynamic>?)?['profile']?['name']
+        hostName: (json['host'] as Map<String, dynamic>?)?['profile']?['name']
                 as String? ??
             'Host',
         bookingsCount:

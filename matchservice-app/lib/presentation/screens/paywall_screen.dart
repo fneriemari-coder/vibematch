@@ -162,12 +162,11 @@ class _PaywallScreenState extends State<PaywallScreen>
                         processing: processing,
                         onTap: processing
                             ? null
-                            : () => context
-                                  .read<SubscriptionCubit>()
-                                  .startCheckout(
-                                    planTier: _planTier,
-                                    currency: _isBrazil ? 'BRL' : 'USD',
-                                  ),
+                            : () =>
+                                context.read<SubscriptionCubit>().startCheckout(
+                                      planTier: _planTier,
+                                      currency: _isBrazil ? 'BRL' : 'USD',
+                                    ),
                       ),
                     ),
                     const SizedBox(height: 12),

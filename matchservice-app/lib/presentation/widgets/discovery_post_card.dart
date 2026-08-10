@@ -17,7 +17,7 @@ class DiscoveryPostCard extends StatefulWidget {
 
   final DiscoveryFeedItem item;
   final bool
-  isActive; // true only for the currently on-screen page — gates video playback
+      isActive; // true only for the currently on-screen page — gates video playback
   final VoidCallback onImplement;
 
   @override

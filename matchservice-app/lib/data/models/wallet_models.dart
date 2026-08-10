@@ -54,8 +54,7 @@ class TimelineItem {
         'APPROVED' => TimelineStatus.approved,
         _ => TimelineStatus.scheduled,
       },
-      date:
-          DateTime.tryParse(
+      date: DateTime.tryParse(
             json['updatedAt'] as String? ?? json['createdAt'] as String? ?? '',
           ) ??
           DateTime.now(),

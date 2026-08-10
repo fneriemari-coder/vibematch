@@ -78,10 +78,10 @@ class _WalletView extends StatelessWidget {
           return RefreshIndicator(
             color: VibeMatchColors.neonPrimary,
             onRefresh: () => context.read<WalletCubit>().load(
-              initialBalance: state.balance,
-              currency: state.currency,
-              userId: currentUser.id,
-            ),
+                  initialBalance: state.balance,
+                  currency: state.currency,
+                  userId: currentUser.id,
+                ),
             child: ListView(
               padding: const EdgeInsets.all(20),
               children: [

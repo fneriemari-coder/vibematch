@@ -44,18 +44,17 @@ class CourseDetail {
   final List<CourseModuleItem> modules;
 
   factory CourseDetail.fromJson(Map<String, dynamic> json) => CourseDetail(
-    id: json['id'] as String,
-    title: json['title'] as String? ?? '',
-    description: json['description'] as String? ?? '',
-    instructorName:
-        (json['instructor'] as Map<String, dynamic>?)?['profile']?['name']
-            as String? ??
-        'Instrutor',
-    materialDownloadUrl: json['materialDownloadUrl'] as String?,
-    modules: (json['modules'] as List? ?? [])
-        .map((e) => CourseModuleItem.fromJson(e as Map<String, dynamic>))
-        .toList(),
-  );
+        id: json['id'] as String,
+        title: json['title'] as String? ?? '',
+        description: json['description'] as String? ?? '',
+        instructorName: (json['instructor']
+                as Map<String, dynamic>?)?['profile']?['name'] as String? ??
+            'Instrutor',
+        materialDownloadUrl: json['materialDownloadUrl'] as String?,
+        modules: (json['modules'] as List? ?? [])
+            .map((e) => CourseModuleItem.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
 }
 
 /// Recommended provider — feeds the "profissionais recomendados" section
