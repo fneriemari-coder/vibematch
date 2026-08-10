@@ -1,0 +1,50 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: matchservice-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: "postgresql://matchservice:matchservice@postgres:5432/matchservice?schema=public"
+      REDIS_URL: "redis://redis:6379"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  postgres:
+    image: postgis/postgis:16-3.4-alpine
+    container_name: matchservice-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: matchservice
+      POSTGRES_PASSWORD: matchservice
+      POSTGRES_DB: matchservice
+    ports:
+      - "5432:5432"
+    volumes:
+      - matchservice_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U matchservice -d matchservice"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: matchservice-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - matchservice_redis_data:/data
+
+volumes:
+  matchservice_postgres_data:
+  matchservice_redis_data:

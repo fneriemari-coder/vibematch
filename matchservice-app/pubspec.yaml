@@ -1,0 +1,64 @@
+name: matchservice_app
+description: MatchService — dual opt-in services marketplace (Cloud/Local/B2B) with escrow, fintech and Discovery Feed.
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+  flutter: ">=3.19.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  flutter_bloc: ^8.1.6
+  equatable: ^2.0.5
+
+  # Networking
+  dio: ^5.6.0
+  socket_io_client: ^2.0.3+1
+
+  # Location (pub.dev package is `geolocator` — the spec's "geolocalization" isn't
+  # a real published package; substituting the standard equivalent so `flutter
+  # pub get` actually resolves)
+  geolocator: ^13.0.1
+  google_maps_flutter: ^2.9.0
+
+  # Swipe deck + media
+  flutter_card_swiper: ^7.0.1
+  cached_network_image: ^3.4.1
+  video_player: ^2.9.2
+
+  # Push notifications
+  firebase_core: ^3.4.1
+  firebase_messaging: ^15.1.1
+
+  # Formatting / locale (BRL vs USD currency display)
+  intl: ^0.19.0
+
+  # Typography (Inter/Poppins per VIBE MATCH design system)
+  google_fonts: ^6.2.1
+
+  # Local persistence (JWT/session cache)
+  shared_preferences: ^2.3.2
+
+  # Admin dashboard charts
+  fl_chart: ^0.69.0
+
+  # Opening the course material PDF (materialDownloadUrl) externally
+  url_launcher: ^6.3.1
+
+  # Picking a photo/video from gallery/camera before uploading to the
+  # presigned S3 URL from POST /media/presigned-upload
+  image_picker: ^1.1.2
+
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true

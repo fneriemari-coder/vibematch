@@ -1,0 +1,285 @@
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import Stripe from 'stripe';
+import { InstallmentStatus, Prisma, SubscriptionStatus, SubscriptionTier, WalletTransactionType } from '@prisma/client';
+import { PrismaService } from '../../common/prisma/prisma.service';
+import { AcademyService } from '../academy/academy.service';
+import { MastermindService } from '../mastermind/mastermind.service';
+import { ConnectService } from './connect.service';
+
+/**
+ * Handles international, multi-currency subscription billing:
+ *   - US clients/providers: USD plans (Premium Client $49/mo, Pro Provider $49/mo equivalent tier)
+ *   - BR clients/providers: BRL plans (R$149/mo)
+ * The actual amount/currency lives in the Stripe Price object; this service
+ * only needs to map "which Price was paid" -> "which SubscriptionTier to grant".
+ */
+@Injectable()
+export class StripeWebhookService {
+  private readonly logger = new Logger(StripeWebhookService.name);
+  private readonly stripe: Stripe;
+  private readonly webhookSecret: string;
+  private readonly priceTierMap: Map<string, SubscriptionTier>;
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+    private readonly academyService: AcademyService,
+    private readonly mastermindService: MastermindService,
+    private readonly connectService: ConnectService,
+  ) {
+    this.stripe = new Stripe(this.config.get('STRIPE_SECRET_KEY') ?? '', {
+      apiVersion: '2024-06-20',
+    });
+    this.webhookSecret = this.config.get('STRIPE_WEBHOOK_SECRET') ?? '';
+
+    this.priceTierMap = new Map<string, SubscriptionTier>();
+    const premiumUsd = this.config.get('STRIPE_PRICE_PREMIUM_CLIENT_USD');
+    const premiumBrl = this.config.get('STRIPE_PRICE_PREMIUM_CLIENT_BRL');
+    const proUsd = this.config.get('STRIPE_PRICE_PRO_PROVIDER_USD');
+    const proBrl = this.config.get('STRIPE_PRICE_PRO_PROVIDER_BRL');
+    if (premiumUsd) this.priceTierMap.set(premiumUsd, SubscriptionTier.PREMIUM_CLIENT);
+    if (premiumBrl) this.priceTierMap.set(premiumBrl, SubscriptionTier.PREMIUM_CLIENT);
+    if (proUsd) this.priceTierMap.set(proUsd, SubscriptionTier.PRO_PROVIDER);
+    if (proBrl) this.priceTierMap.set(proBrl, SubscriptionTier.PRO_PROVIDER);
+  }
+
+  async handleEvent(rawBody: Buffer, signature: string) {
+    let event: Stripe.Event;
+    try {
+      event = this.stripe.webhooks.constructEvent(rawBody, signature, this.webhookSecret);
+    } catch (err) {
+      this.logger.warn(`Stripe signature verification failed: ${(err as Error).message}`);
+      throw new BadRequestException('Invalid Stripe webhook signature');
+    }
+
+    switch (event.type) {
+      case 'invoice.paid':
+        await this.handleInvoicePaid(event.data.object as Stripe.Invoice);
+        break;
+      case 'invoice.payment_failed':
+        await this.handlePaymentFailed(event.data.object as Stripe.Invoice);
+        break;
+      case 'identity.verification_session.verified':
+        await this.handleIdentityVerified(event.data.object as Stripe.Identity.VerificationSession);
+        break;
+      case 'checkout.session.completed':
+        await this.handleCheckoutSessionCompleted(event.data.object as Stripe.Checkout.Session);
+        break;
+      case 'account.updated':
+        await this.connectService.syncAccountStatus(event.data.object as Stripe.Account);
+        break;
+      default:
+        this.logger.debug(`Ignoring unhandled Stripe event type: ${event.type}`);
+    }
+
+    return { received: true };
+  }
+
+  private async handleInvoicePaid(invoice: Stripe.Invoice) {
+    const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
+    if (!customerId) return;
+
+    // BNPL installments are one-off invoices (no `invoice.subscription`) —
+    // check first, since bnpl-installment-charger.service.ts may have left
+    // this one SCHEDULED pending exactly this confirmation (async payment
+    // method, e.g. 3DS).
+    const bnplInstallment = await this.prisma.bnplInstallment.findFirst({ where: { stripeInvoiceId: invoice.id } });
+    if (bnplInstallment) {
+      await this.handleBnplInstallmentPaid(bnplInstallment.id, invoice);
+      return;
+    }
+
+    // A client can simultaneously hold an app Subscription (Premium/Pro tier)
+    // AND one or more MaintenanceAgreement subscriptions on the SAME Stripe
+    // customer — check maintenance first, or a maintenance payment would be
+    // misread as a tier renewal below.
+    const stripeSubscriptionId =
+      typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id;
+    if (stripeSubscriptionId) {
+      const agreement = await this.prisma.maintenanceAgreement.findFirst({
+        where: { stripeSubscriptionId },
+      });
+      if (agreement) {
+        await this.handleMaintenanceInvoicePaid(agreement.id, invoice);
+        return;
+      }
+    }
+
+    const priceId = invoice.lines.data[0]?.price?.id;
+    const tier = priceId ? this.priceTierMap.get(priceId) : undefined;
+
+    const subscription = await this.prisma.subscription.findFirst({
+      where: { stripeCustomerId: customerId },
+    });
+    if (!subscription) {
+      this.logger.warn(`invoice.paid for unknown Stripe customer ${customerId}`);
+      return;
+    }
+
+    const currentExpiry = subscription.expiresAt && subscription.expiresAt > new Date()
+      ? subscription.expiresAt
+      : new Date();
+    const newExpiry = new Date(currentExpiry.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    await this.prisma.subscription.update({
+      where: { id: subscription.id },
+      data: {
+        tier: tier ?? subscription.tier,
+        status: SubscriptionStatus.ACTIVE,
+        expiresAt: newExpiry,
+      },
+    });
+
+    this.logger.log(`Subscription ${subscription.id} renewed -> ${tier ?? subscription.tier}, expires ${newExpiry.toISOString()}`);
+  }
+
+  private async handlePaymentFailed(invoice: Stripe.Invoice) {
+    const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
+    if (!customerId) return;
+
+    const bnplInstallment = await this.prisma.bnplInstallment.findFirst({ where: { stripeInvoiceId: invoice.id } });
+    if (bnplInstallment) {
+      const reason = invoice.last_finalization_error?.message ?? 'Payment failed (see Stripe dashboard for detail)';
+      await this.prisma.bnplInstallment.update({
+        where: { id: bnplInstallment.id },
+        data: { status: InstallmentStatus.FAILED, failureReason: reason },
+      });
+      this.logger.warn(`BNPL installment ${bnplInstallment.id} FAILED via webhook (invoice ${invoice.id}): ${reason}`);
+      return;
+    }
+
+    // Same reasoning as handleInvoicePaid: a failed maintenance charge must
+    // never downgrade the client's unrelated app-level Subscription tier.
+    const stripeSubscriptionId =
+      typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id;
+    if (stripeSubscriptionId) {
+      const agreement = await this.prisma.maintenanceAgreement.findFirst({ where: { stripeSubscriptionId } });
+      if (agreement) {
+        this.logger.warn(`Maintenance invoice payment failed for agreement ${agreement.id} (invoice ${invoice.id})`);
+        return;
+      }
+    }
+
+    const subscription = await this.prisma.subscription.findFirst({
+      where: { stripeCustomerId: customerId },
+    });
+    if (!subscription) return;
+
+    await this.prisma.subscription.update({
+      where: { id: subscription.id },
+      data: { tier: SubscriptionTier.FREE, status: SubscriptionStatus.PAST_DUE },
+    });
+
+    this.logger.log(`Subscription ${subscription.id} downgraded to FREE after failed payment`);
+  }
+
+  /** Idempotent — a webhook retry or a duplicate event must never double-mark this. */
+  private async handleBnplInstallmentPaid(installmentId: string, invoice: Stripe.Invoice) {
+    const installment = await this.prisma.bnplInstallment.findUnique({ where: { id: installmentId } });
+    if (!installment || installment.status === InstallmentStatus.CHARGED) return;
+
+    await this.prisma.bnplInstallment.update({
+      where: { id: installmentId },
+      data: { status: InstallmentStatus.CHARGED, chargedAt: new Date() },
+    });
+    this.logger.log(`BNPL installment ${installmentId} confirmed CHARGED via webhook (invoice ${invoice.id})`);
+  }
+
+  /**
+   * A recurring maintenance invoice cleared — split it: platform keeps
+   * `platformTakeRate` (15% by default, for cloud infra + AI monitoring),
+   * the rest is credited to the provider's wallet as recurring revenue. The
+   * platform's cut is intentionally NOT written as a WalletTransaction —
+   * there's no "platform user" account to attribute it to — it's simply the
+   * portion of `amount_paid` never forwarded; it's still fully reconstructable
+   * from (invoice total - provider's MAINTENANCE_REVENUE row) for accounting.
+   */
+  private async handleMaintenanceInvoicePaid(agreementId: string, invoice: Stripe.Invoice) {
+    const agreement = await this.prisma.maintenanceAgreement.findUnique({ where: { id: agreementId } });
+    if (!agreement) return;
+
+    const amountPaid = invoice.amount_paid / 100;
+    const providerShare = Number((amountPaid * (1 - agreement.platformTakeRate)).toFixed(2));
+    const platformShare = Number((amountPaid - providerShare).toFixed(2));
+
+    await this.prisma.$transaction([
+      this.prisma.walletTransaction.create({
+        data: {
+          userId: agreement.providerId,
+          type: WalletTransactionType.MAINTENANCE_REVENUE,
+          amount: new Prisma.Decimal(providerShare),
+          currency: agreement.currency,
+          metadata: {
+            agreementId: agreement.id,
+            invoiceId: invoice.id,
+            grossAmount: amountPaid,
+            platformTakeRate: agreement.platformTakeRate,
+            platformShare,
+          },
+        },
+      }),
+      this.prisma.user.update({
+        where: { id: agreement.providerId },
+        data: { walletBalance: { increment: new Prisma.Decimal(providerShare) } },
+      }),
+    ]);
+
+    const { stripeTransferId } = await this.connectService.payoutOrLedgerOnly(
+      agreement.providerId,
+      providerShare,
+      agreement.currency,
+      { kind: 'maintenance_revenue', agreementId: agreement.id, invoiceId: invoice.id },
+    );
+
+    this.logger.log(
+      `Maintenance invoice ${invoice.id} paid for agreement ${agreement.id}: ` +
+        `${providerShare} ${agreement.currency} to provider ${agreement.providerId}, ` +
+        `${platformShare} ${agreement.currency} platform take (${(agreement.platformTakeRate * 100).toFixed(0)}%)` +
+        (stripeTransferId ? ` — real transfer ${stripeTransferId}` : ' — ledger only, Connect not onboarded'),
+    );
+  }
+
+  /**
+   * Routes one-off Checkout purchases by `metadata.kind` — currently only
+   * VibeAcademy course purchases use `mode: 'payment'` Checkout Sessions.
+   * Subscription-mode Checkout Sessions (app tiers, maintenance contracts)
+   * are confirmed via `invoice.paid` instead, not this event.
+   */
+  private async handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
+    if (session.mode !== 'payment') return;
+    if (session.payment_status !== 'paid') return;
+
+    if (session.metadata?.kind === 'course_purchase') {
+      await this.academyService.completePurchase(session);
+      return;
+    }
+
+    if (session.metadata?.kind === 'mastermind_booking') {
+      await this.mastermindService.completeBooking(session);
+      return;
+    }
+
+    this.logger.debug(`Ignoring checkout.session.completed with unrecognized kind: ${session.metadata?.kind}`);
+  }
+
+  /**
+   * The only place `User.identityVerified` is ever set to true — deliberately
+   * never settable directly from a client-facing route, since AntiFraudGuard
+   * treats it as proof of a completed Stripe Identity check.
+   */
+  private async handleIdentityVerified(session: Stripe.Identity.VerificationSession) {
+    const userId = session.metadata?.userId;
+    if (!userId) {
+      this.logger.warn(`identity.verification_session.verified with no userId in metadata (session ${session.id})`);
+      return;
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { identityVerified: true },
+    });
+
+    this.logger.log(`Identity verified for user ${userId} (Stripe session ${session.id})`);
+  }
+}

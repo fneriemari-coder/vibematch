@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment / secrets — never commit real credentials
+.env
+.env.local
+.env.*.local
+
+# Backend build output
+matchservice-backend/dist/
+
+# Flutter build artifacts
+matchservice-app/build/
+matchservice-app/.dart_tool/
+matchservice-app/.flutter-plugins
+matchservice-app/.flutter-plugins-dependencies
+matchservice-app/.packages
+matchservice-app/pubspec.lock
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS/editor cruft
+.DS_Store
+.vscode/
+.idea/

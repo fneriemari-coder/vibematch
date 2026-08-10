@@ -1,0 +1,769 @@
+// MatchService — Prisma schema
+// PostgreSQL + PostGIS (geo radius search is done via raw SQL in users.service.ts,
+// using the lat/lng columns below with ST_DWithin — see modules/users/users.service.ts)
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis]
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  CLIENT
+  PROVIDER
+  BOTH
+  ADMIN
+}
+
+// Single-purpose opaque tokens issued by AuthService — refresh sessions,
+// email verification links, password-reset links. Sharing one table keeps
+// the "random token, hashed at rest, single-use or revocable, expires" shape
+// in one place instead of three near-identical tables.
+enum AuthTokenPurpose {
+  REFRESH
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
+enum PlatformMode {
+  CLOUD
+  LOCAL
+}
+
+enum SwipeMode {
+  CLOUD
+  LOCAL
+  B2B
+}
+
+enum SwipeDirection {
+  LIKE
+  DISLIKE
+}
+
+enum MatchType {
+  SERVICE
+  B2B
+}
+
+enum MatchStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum Currency {
+  USD
+  BRL
+}
+
+enum EscrowStatus {
+  PENDING
+  FUNDED
+  COMPLETED
+  DISPUTED
+  REFUNDED
+  CANCELED
+}
+
+enum SubscriptionTier {
+  FREE
+  PREMIUM_CLIENT
+  PRO_PROVIDER
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  INCOMPLETE
+}
+
+enum KanbanStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+enum WalletTransactionType {
+  ADVANCE
+  ESCROW_RELEASE
+  PLATFORM_FEE
+  DEPOSIT
+  WITHDRAWAL
+  BNPL_FUNDING // immediate provider payout when a project is BNPL-financed — see bnpl.service.ts
+  MILESTONE_RELEASE // AI-verified milestone payout — see ai-validator.service.ts
+  MAINTENANCE_REVENUE // provider's 85% share of a recurring maintenance invoice — see maintenance.service.ts
+  COURSE_REVENUE // instructor's 80% share of a course purchase — see academy.service.ts
+  MASTERMIND_REVENUE // host's 80% share of a mastermind booking — see mastermind.service.ts
+}
+
+enum PaymentModel {
+  UPFRONT
+  BNPL_FINANCED
+}
+
+enum MilestoneStatus {
+  PENDING
+  VERIFYING
+  APPROVED
+}
+
+enum InstallmentStatus {
+  SCHEDULED
+  CHARGED
+  FAILED
+}
+
+enum AccountStatus {
+  ACTIVE
+  UNDER_REVIEW
+  SUSPENDED
+}
+
+enum FraudVerdict {
+  ALLOWED
+  BLOCKED
+}
+
+enum MaintenanceStatus {
+  ACTIVE
+  PAUSED
+}
+
+enum TicketSeverity {
+  LOW
+  HIGH
+}
+
+enum TicketStatus {
+  OPEN
+  RESOLVED
+}
+
+enum FeedMode {
+  CLOUD
+  LOCAL
+}
+
+enum PostStatus {
+  PUBLISHED
+  BLOCKED
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String       @id @default(uuid())
+  email         String       @unique
+  passwordHash  String       @map("password_hash")
+  role          Role         @default(CLIENT)
+  currentMode   PlatformMode @default(CLOUD) @map("current_mode")
+  country       String // ISO-3166 alpha-2, e.g. "US", "BR" — drives currency/locale defaults
+  walletBalance Decimal      @default(0) @map("wallet_balance") @db.Decimal(14, 2)
+  fcmToken      String?      @map("fcm_token") // Firebase Cloud Messaging device token, refreshed on app boot
+  isBot         Boolean      @default(false) @map("is_bot") // system/robot profile used by ai-publisher.service.ts
+
+  // --- Auth security (see modules/auth/*) ---
+  emailVerified   Boolean   @default(false) @map("email_verified")
+  emailVerifiedAt DateTime? @map("email_verified_at")
+
+  // --- Anti-fraud / KYC (see fintech/guards/anti-fraud.guard.ts) ---
+  accountStatus           AccountStatus @default(ACTIVE) @map("account_status")
+  identityVerified        Boolean       @default(false) @map("identity_verified") // Stripe Identity — see fintech/identity.service.ts
+  stripeIdentitySessionId String?       @map("stripe_identity_session_id")
+
+  // --- Real payouts (see fintech/connect.service.ts) ---
+  // wallet_balance above stays the in-app ledger/spendable-credit number
+  // regardless of Connect status; these two fields gate whether earnings
+  // ALSO get pushed as real Stripe Transfers to money the provider can
+  // actually withdraw to a bank account.
+  stripeConnectAccountId      String? @map("stripe_connect_account_id")
+  stripeConnectPayoutsEnabled Boolean @default(false) @map("stripe_connect_payouts_enabled")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  profile      UserProfile?
+  score        ProviderScore?
+  subscription Subscription?
+
+  swipesMade     Swipe[] @relation("SwipesMade")
+  swipesReceived Swipe[] @relation("SwipesReceived")
+
+  matchesAsOne Match[] @relation("MatchUserOne")
+  matchesAsTwo Match[] @relation("MatchUserTwo")
+
+  escrowAsClient   EscrowProject[] @relation("EscrowClient")
+  escrowAsProvider EscrowProject[] @relation("EscrowProvider")
+
+  chatMessages       ChatMessage[]
+  walletTransactions WalletTransaction[]
+  kanbanAssignments  KanbanTask[]
+
+  discoveryPosts       DiscoveryPost[]
+  aiProjectSuggestions AIProjectSuggestion[]
+  fraudCheckLogs       FraudCheckLog[]
+
+  maintenanceAsClient   MaintenanceAgreement[] @relation("MaintenanceClient")
+  maintenanceAsProvider MaintenanceAgreement[] @relation("MaintenanceProvider")
+
+  coursesInstructed        BusinessCourse[]        @relation("CourseInstructor")
+  courseEnrollments        CourseEnrollment[]
+  mastermindSessionsHosted LiveMastermindSession[] @relation("MastermindHost")
+  mastermindBookings       MastermindBooking[]     @relation("MastermindBookings")
+
+  quizAttempts QuizAttempt[]
+  certificates IssuedCertificate[]
+
+  authTokens AuthToken[]
+
+  @@map("users")
+}
+
+model UserProfile {
+  id     String @id @default(uuid())
+  userId String @unique @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name          String
+  bio           String   @default("")
+  skills        String[] @default([])
+  portfolioUrls String[] @default([]) @map("portfolio_urls")
+
+  // Stored as plain floats; PostGIS ST_MakePoint(lng, lat) is computed on the fly
+  // in raw-SQL radius queries (see UsersService.findNearby). This avoids having to
+  // keep a generated geography column in sync via triggers for an MVP.
+  latitude  Float? @map("latitude")
+  longitude Float? @map("longitude")
+
+  averageRating Float    @default(0) @map("average_rating")
+  b2bNetworking Boolean  @default(false) @map("b2b_networking")
+  hourlyRate    Decimal? @map("hourly_rate") @db.Decimal(10, 2)
+  rateCurrency  Currency @default(USD) @map("rate_currency")
+
+  createdAt DateTime @updatedAt @map("updated_at")
+
+  @@index([latitude, longitude])
+  @@map("user_profiles")
+}
+
+model Swipe {
+  id        String         @id @default(uuid())
+  swiperId  String         @map("swiper_id")
+  swiper    User           @relation("SwipesMade", fields: [swiperId], references: [id], onDelete: Cascade)
+  swipedId  String         @map("swiped_id")
+  swiped    User           @relation("SwipesReceived", fields: [swipedId], references: [id], onDelete: Cascade)
+  direction SwipeDirection
+  mode      SwipeMode
+  createdAt DateTime       @default(now()) @map("created_at")
+
+  // A user may only swipe another user once per mode — re-swiping is a no-op at the API level.
+  @@unique([swiperId, swipedId, mode])
+  @@index([swipedId, mode, direction])
+  @@map("swipes")
+}
+
+model Match {
+  id        String      @id @default(uuid())
+  userOneId String      @map("user_one_id")
+  userOne   User        @relation("MatchUserOne", fields: [userOneId], references: [id], onDelete: Cascade)
+  userTwoId String      @map("user_two_id")
+  userTwo   User        @relation("MatchUserTwo", fields: [userTwoId], references: [id], onDelete: Cascade)
+  type      MatchType
+  status    MatchStatus @default(ACTIVE)
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  escrowProject EscrowProject?
+  chatMessages  ChatMessage[]
+
+  @@unique([userOneId, userTwoId, type])
+  @@map("matches")
+}
+
+model EscrowProject {
+  id         String @id @default(uuid())
+  matchId    String @unique @map("match_id")
+  match      Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  clientId   String @map("client_id")
+  client     User   @relation("EscrowClient", fields: [clientId], references: [id])
+  providerId String @map("provider_id")
+  provider   User   @relation("EscrowProvider", fields: [providerId], references: [id])
+
+  budget   Decimal      @db.Decimal(14, 2)
+  currency Currency
+  status   EscrowStatus @default(PENDING)
+
+  // true once the provider has used /wallet/advance to cash out early on this project
+  advanced Boolean @default(false)
+
+  // BNPL_FINANCED: provider is paid upfront (minus risk fee) via bnpl.service.ts,
+  // client repays over `installmentCount` scheduled charges (see BnplInstallment).
+  paymentModel     PaymentModel @default(UPFRONT) @map("payment_model")
+  installmentCount Int?         @map("installment_count")
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  fundedAt    DateTime? @map("funded_at")
+  completedAt DateTime? @map("completed_at")
+  disputedAt  DateTime? @map("disputed_at")
+
+  kanbanTasks          KanbanTask[]
+  walletTransactions   WalletTransaction[]
+  milestones           ProjectMilestone[]
+  bnplInstallments     BnplInstallment[]
+  maintenanceAgreement MaintenanceAgreement?
+
+  @@map("escrow_projects")
+}
+
+model ProviderScore {
+  id         String @id @default(uuid())
+  providerId String @unique @map("provider_id")
+  provider   User   @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  reliabilityRate      Float @default(1) @map("reliability_rate") // 0..1 (1 - cancellation rate)
+  responseTimeMinutes  Float @default(0) @map("response_time_minutes")
+  completedJobsCount   Int   @default(0) @map("completed_jobs_count")
+  financialHealthScore Int   @default(500) @map("financial_health_score") // 0..1000
+
+  // Snapshot of the score just before the current one, so anti-fraud.guard.ts
+  // can detect a "drastic drop in under 48h" without a full history table.
+  previousFinancialHealthScore Int?      @map("previous_financial_health_score")
+  previousScoreAt              DateTime? @map("previous_score_at")
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("provider_scores")
+}
+
+model Subscription {
+  id                   String             @id @default(uuid())
+  userId               String             @unique @map("user_id")
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tier                 SubscriptionTier   @default(FREE)
+  status               SubscriptionStatus @default(ACTIVE)
+  currency             Currency           @default(USD)
+  stripeCustomerId     String?            @map("stripe_customer_id")
+  stripeSubscriptionId String?            @map("stripe_subscription_id")
+  expiresAt            DateTime?          @map("expires_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("subscriptions")
+}
+
+model ChatMessage {
+  id                String   @id @default(uuid())
+  matchId           String   @map("match_id")
+  match             Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  senderId          String   @map("sender_id")
+  sender            User     @relation(fields: [senderId], references: [id])
+  content           String
+  translatedContent String?  @map("translated_content")
+  sourceLang        String?  @map("source_lang")
+  targetLang        String?  @map("target_lang")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@index([matchId, createdAt])
+  @@map("chat_messages")
+}
+
+model KanbanTask {
+  id              String        @id @default(uuid())
+  escrowProjectId String        @map("escrow_project_id")
+  escrowProject   EscrowProject @relation(fields: [escrowProjectId], references: [id], onDelete: Cascade)
+  title           String
+  description     String        @default("")
+  status          KanbanStatus  @default(TODO)
+  assigneeId      String?       @map("assignee_id")
+  assignee        User?         @relation(fields: [assigneeId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([escrowProjectId, status])
+  @@map("kanban_tasks")
+}
+
+// Append-only ledger backing `User.walletBalance` — every balance mutation must
+// write a row here so the balance is always reconstructable/auditable.
+model WalletTransaction {
+  id              String                @id @default(uuid())
+  userId          String                @map("user_id")
+  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type            WalletTransactionType
+  amount          Decimal               @db.Decimal(14, 2) // positive = credit, negative = debit
+  currency        Currency
+  relatedEscrowId String?               @map("related_escrow_id")
+  relatedEscrow   EscrowProject?        @relation(fields: [relatedEscrowId], references: [id])
+  metadata        Json?
+  createdAt       DateTime              @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@map("wallet_transactions")
+}
+
+// ---------------------------------------------------------------------------
+// Discovery Feed + AI Intent Translator
+// ---------------------------------------------------------------------------
+
+model DiscoveryPost {
+  id                   String     @id @default(uuid())
+  userId               String     @map("user_id")
+  user                 User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title                String
+  contentText          String     @map("content_text")
+  mediaUrl             String?    @map("media_url")
+  videoDurationSeconds Int?       @map("video_duration_seconds")
+  likesCount           Int        @default(0) @map("likes_count")
+  viewsCount           Int        @default(0) @map("views_count")
+  // Gate set by ai-moderator.service.ts before a user-submitted post is ever
+  // served in the public feed. AI-publisher-generated posts are created
+  // PUBLISHED directly (system-authored, not subject to the user-post gate).
+  status               PostStatus @default(PUBLISHED)
+  moderationReason     String?    @map("moderation_reason")
+  // Set once the trend monitor has fired a viral push alert for this post,
+  // so the 30-minute cron never double-notifies the same post.
+  trendNotifiedAt      DateTime?  @map("trend_notified_at")
+  createdAt            DateTime   @default(now()) @map("created_at")
+
+  tags PostTag[]
+
+  @@index([createdAt])
+  @@map("discovery_posts")
+}
+
+model PostTag {
+  id      String        @id @default(uuid())
+  postId  String        @map("post_id")
+  post    DiscoveryPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tagName String        @map("tag_name") // e.g. 'AI_AUTOMATION', 'VIDEO_EDITING', 'LOCAL_MARKETING'
+
+  @@index([tagName])
+  @@index([postId])
+  @@map("post_tags")
+}
+
+model AIProjectSuggestion {
+  id               String   @id @default(uuid())
+  userId           String   @map("user_id")
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rawInput         String   @map("raw_input")
+  interpretedNeeds String[] @map("interpreted_needs") // exactly 3 market-standard skill tags
+  suggestedMode    FeedMode @default(CLOUD) @map("suggested_mode")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@map("ai_project_suggestions")
+}
+
+// ---------------------------------------------------------------------------
+// BNPL Corporativo + AI Delivery Validator
+// ---------------------------------------------------------------------------
+
+model ProjectMilestone {
+  id                  String          @id @default(uuid())
+  projectId           String          @map("project_id")
+  project             EscrowProject   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title               String
+  criteriaDescription String          @map("criteria_description")
+  status              MilestoneStatus @default(PENDING)
+  // Portion of EscrowProject.budget released to the provider when this
+  // milestone is AI-approved. Null = split the remaining budget evenly
+  // across the project's milestones at release time (see ai-validator.service.ts).
+  releaseAmount       Decimal?        @map("release_amount") @db.Decimal(14, 2)
+  // Append-only audit trail of every AI verification attempt (timestamp,
+  // compliance score, feedback) — never overwritten, only appended to.
+  aiFeedbackLog       String          @default("") @map("ai_feedback_log") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([projectId, status])
+  @@map("project_milestones")
+}
+
+model BnplInstallment {
+  id                String            @id @default(uuid())
+  escrowProjectId   String            @map("escrow_project_id")
+  escrowProject     EscrowProject     @relation(fields: [escrowProjectId], references: [id], onDelete: Cascade)
+  installmentNumber Int               @map("installment_number")
+  amount            Decimal           @db.Decimal(14, 2)
+  currency          Currency
+  dueDate           DateTime          @map("due_date")
+  status            InstallmentStatus @default(SCHEDULED)
+  stripeInvoiceId   String?           @map("stripe_invoice_id")
+  chargedAt         DateTime?         @map("charged_at")
+  failureReason     String?           @map("failure_reason")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([escrowProjectId, installmentNumber])
+  @@index([status, dueDate])
+  @@map("bnpl_installments")
+}
+
+// ---------------------------------------------------------------------------
+// Anti-fraud audit trail
+// ---------------------------------------------------------------------------
+
+// One row per AntiFraudGuard evaluation on a financial route. The raw device
+// fingerprint (IP, device ID, GPS/behavior hints) is AES-256-GCM encrypted
+// before it ever reaches this table — see common/security/aes-encryption.util.ts
+// — so a DB leak doesn't leak raw PII, only ciphertext plus the verdict/reason
+// needed for audit review.
+model FraudCheckLog {
+  id               String       @id @default(uuid())
+  userId           String       @map("user_id")
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  route            String
+  verdict          FraudVerdict
+  reasonCode       String?      @map("reason_code")
+  encryptedPayload String?      @map("encrypted_payload") @db.Text
+  createdAt        DateTime     @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@map("fraud_check_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Continuous Maintenance Contracts (recurring support/hosting revenue)
+// ---------------------------------------------------------------------------
+
+model MaintenanceAgreement {
+  id         String        @id @default(uuid())
+  projectId  String        @unique @map("project_id") // one maintenance agreement per completed project
+  project    EscrowProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  clientId   String        @map("client_id")
+  client     User          @relation("MaintenanceClient", fields: [clientId], references: [id])
+  providerId String        @map("provider_id")
+  provider   User          @relation("MaintenanceProvider", fields: [providerId], references: [id])
+
+  monthlyFee            Decimal           @map("monthly_fee") @db.Decimal(10, 2)
+  currency              Currency
+  hostingIncluded       Boolean           @default(true) @map("hosting_included")
+  supportHoursAllocated Int               @map("support_hours_allocated")
+  status                MaintenanceStatus @default(ACTIVE)
+
+  // Optional live URL for the hosted app this agreement covers. When set,
+  // ai-watcher.service.ts does a REAL HTTP health check instead of
+  // simulating one — see that file's doc comment.
+  hostingUrl String? @map("hosting_url")
+
+  // Platform keeps this share of every recurring invoice; the rest is
+  // credited to the provider's wallet_balance — see maintenance.service.ts.
+  platformTakeRate Float @default(0.15) @map("platform_take_rate")
+
+  stripeCustomerId     String? @map("stripe_customer_id")
+  stripeSubscriptionId String? @map("stripe_subscription_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tickets AITicketMonitor[]
+
+  @@index([status])
+  @@map("maintenance_agreements")
+}
+
+model AITicketMonitor {
+  id            String               @id @default(uuid())
+  agreementId   String               @map("agreement_id")
+  agreement     MaintenanceAgreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  errorLog      String               @map("error_log") @db.Text
+  severityLevel TicketSeverity       @map("severity_level")
+  status        TicketStatus         @default(OPEN)
+
+  // Skill tags this failure touches — sourced from the provider's own
+  // UserProfile.skills at ticket-creation time (no dedicated per-project tag
+  // exists in the schema, so this is the closest honest signal available).
+  // Drives ai-retention-push.service.ts's course<->error correlation.
+  relatedTags String[] @default([]) @map("related_tags")
+
+  detectedAt DateTime  @default(now()) @map("detected_at")
+  resolvedAt DateTime? @map("resolved_at")
+
+  @@index([agreementId, status])
+  @@map("ai_ticket_monitors")
+}
+
+// ---------------------------------------------------------------------------
+// VibeAcademy — Executive Education
+// ---------------------------------------------------------------------------
+
+model BusinessCourse {
+  id              String   @id @default(uuid())
+  instructorId    String   @map("instructor_id")
+  instructor      User     @relation("CourseInstructor", fields: [instructorId], references: [id])
+  title           String
+  description     String
+  price           Decimal  @db.Decimal(10, 2)
+  currency        Currency
+  rating          Float    @default(0)
+  mediaPreviewUrl String?  @map("media_preview_url")
+
+  // Market-standard skill tags this course teaches, e.g. a Finance course ->
+  // ['CONTROLLER', 'FINANCIAL_AUDIT']. Drives GET /academy/course-connections/:courseId,
+  // which matches these against UserProfile.skills / PostTag.tagName.
+  skillsTaught String[] @default([]) @map("skills_taught")
+
+  // pdfkit-generated executive summary + implementation checklist + swipe-deck
+  // link, uploaded to S3 by ai-factory.service.ts / certificate.service.ts.
+  materialDownloadUrl String? @map("material_download_url")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  enrollments CourseEnrollment[]
+  modules     CourseModule[]
+  quiz        CourseQuiz?
+
+  @@index([instructorId])
+  @@map("business_courses")
+}
+
+model CourseModule {
+  id          String         @id @default(uuid())
+  courseId    String         @map("course_id")
+  course      BusinessCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  orderIndex  Int            @map("order_index")
+  title       String
+  // Full ~5-minute voice script generated by AiCourseFactoryService.
+  voiceScript String         @map("voice_script") @db.Text
+  // Set once generateLessonVideo() (currently a placeholder — see
+  // ai-factory.service.ts) "renders" this lesson.
+  videoUrl    String?        @map("video_url")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([courseId, orderIndex])
+  @@map("course_modules")
+}
+
+model CourseEnrollment {
+  id          String         @id @default(uuid())
+  userId      String         @map("user_id")
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId    String         @map("course_id")
+  course      BusinessCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  pricePaid   Decimal        @map("price_paid") @db.Decimal(10, 2) // post-discount amount actually charged — audit trail
+  currency    Currency
+  purchasedAt DateTime       @default(now()) @map("purchased_at")
+
+  // A user buys (and gets access to) a given course exactly once.
+  @@unique([userId, courseId])
+  @@map("course_enrollments")
+}
+
+model LiveMastermindSession {
+  id            String   @id @default(uuid())
+  hostId        String   @map("host_id")
+  host          User     @relation("MastermindHost", fields: [hostId], references: [id])
+  title         String
+  accessFee     Decimal  @map("access_fee") @db.Decimal(10, 2)
+  currency      Currency
+  scheduledFor  DateTime @map("scheduled_for")
+  // Real host-supplied URL (Zoom/YouTube Live/etc.) — null until the host
+  // sets one; mastermind.service.ts never fabricates a placeholder here.
+  liveStreamUrl String?  @map("live_stream_url")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  bookings MastermindBooking[]
+
+  @@index([scheduledFor])
+  @@map("live_mastermind_sessions")
+}
+
+/// A client's paid seat in a LiveMastermindSession — see mastermind.service.ts.
+model MastermindBooking {
+  id        String                @id @default(uuid())
+  sessionId String                @map("session_id")
+  session   LiveMastermindSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId    String                @map("user_id")
+  user      User                  @relation("MastermindBookings", fields: [userId], references: [id], onDelete: Cascade)
+  pricePaid Decimal               @map("price_paid") @db.Decimal(10, 2)
+  currency  Currency
+  createdAt DateTime              @default(now()) @map("created_at")
+
+  @@unique([sessionId, userId])
+  @@map("mastermind_bookings")
+}
+
+// ---------------------------------------------------------------------------
+// AiQuizAndCertificateService — academic validation
+// ---------------------------------------------------------------------------
+
+model CourseQuiz {
+  id            String         @id @default(uuid())
+  courseId      String         @unique @map("course_id")
+  course        BusinessCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  // Array of { question, options: string[], correctAnswerIndex }, generated
+  // by quiz-generator.service.ts.
+  questionsJson Json           @map("questions_json")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  attempts QuizAttempt[]
+
+  @@map("course_quizzes")
+}
+
+model QuizAttempt {
+  id              String     @id @default(uuid())
+  userId          String     @map("user_id")
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quizId          String     @map("quiz_id")
+  quiz            CourseQuiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  scorePercentage Float      @map("score_percentage")
+  passed          Boolean
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId, quizId])
+  @@map("quiz_attempts")
+}
+
+model IssuedCertificate {
+  id              String   @id @default(uuid())
+  userId          String   @map("user_id")
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId        String   @map("course_id")
+  certificateUuid String   @unique @map("certificate_uuid")
+  downloadUrl     String   @map("download_url")
+  issuedAt        DateTime @default(now()) @map("issued_at")
+
+  @@index([userId, courseId])
+  @@map("issued_certificates")
+}
+
+/// Refresh sessions, email-verification links and password-reset links —
+/// see the AuthTokenPurpose doc comment above. The plaintext token is only
+/// ever returned to the caller/emailed once; `tokenHash` (sha256) is what's
+/// persisted, so a DB leak alone can't be replayed as a live session or link.
+model AuthToken {
+  id         String           @id @default(uuid())
+  userId     String           @map("user_id")
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose    AuthTokenPurpose
+  tokenHash  String           @unique @map("token_hash")
+  expiresAt  DateTime         @map("expires_at")
+  // Set once the token is used (verify/reset) or revoked/rotated (refresh) —
+  // whatever the reason, a non-null consumedAt means "no longer valid."
+  consumedAt DateTime?        @map("consumed_at")
+  createdAt  DateTime         @default(now()) @map("created_at")
+
+  @@index([userId, purpose])
+  @@map("auth_tokens")
+}
