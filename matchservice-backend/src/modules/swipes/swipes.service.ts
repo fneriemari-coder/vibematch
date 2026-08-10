@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { Prisma, Role, SwipeDirection, SwipeMode, MatchType } from '@prisma/client';
+import { Prisma, SwipeDirection, SwipeMode, MatchType } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateSwipeDto } from './dto/create-swipe.dto';
 import { StackQueryDto } from './dto/stack-query.dto';

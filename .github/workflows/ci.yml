@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend — typecheck, migrations, tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: matchservice-backend
+
+    services:
+      postgres:
+        # postgis/postgis, not the plain postgres image — schema.prisma
+        # declares the postgis extension, and `prisma migrate deploy` will
+        # fail against a Postgres without it installed.
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: matchservice_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/matchservice_ci?schema=public
+      JWT_SECRET: ci-only-secret-not-for-production
+      NODE_ENV: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: matchservice-backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prisma generate
+        run: npx prisma generate
+
+      - name: Apply migrations against a real Postgres+PostGIS
+        run: npx prisma migrate deploy
+
+      - name: Typecheck
+        run: npx tsc --noEmit -p tsconfig.json
+
+      - name: Lint
+        run: npx eslint "src/**/*.ts" --max-warnings=0
+
+      - name: Unit tests
+        run: npx jest --ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Docker image build (validation only — not pushed)
+        run: docker build -t matchservice-backend:ci .
+
+  flutter:
+    name: Flutter — pub get, analyze
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: matchservice-app
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+
+      - name: flutter pub get
+        run: flutter pub get
+
+      - name: flutter analyze
+        run: flutter analyze --no-fatal-infos
+
+      - name: dart format --output=none --set-exit-if-changed
+        run: dart format --output=none --set-exit-if-changed lib

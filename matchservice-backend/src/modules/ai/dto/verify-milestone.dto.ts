@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsUrl, MaxLength, ValidateIf } from 'class-validator';
+import { IsString, IsUrl, MaxLength, ValidateIf } from 'class-validator';
 
 export class VerifyMilestoneDto {
   @IsString()
