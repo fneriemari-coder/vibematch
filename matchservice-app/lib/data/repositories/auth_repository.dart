@@ -60,6 +60,21 @@ class AuthRepository {
     return _client.dio.post('/auth/resend-verification');
   }
 
+  /// LGPD/GDPR data-portability export — the full response payload from
+  /// GET /users/me/data-export, shown as-is (see DataPrivacyScreen).
+  Future<Map<String, dynamic>> exportMyData() async {
+    final response = await _client.dio.get('/users/me/data-export');
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// LGPD/GDPR "right to erasure" — anonymizes the account (see
+  /// data-privacy.service.ts for exactly what is/isn't erased). Clears the
+  /// local session on success since the account is no longer usable.
+  Future<void> deleteMyAccount(String password) async {
+    await _client.dio.delete('/users/me', data: {'password': password});
+    await DioClient.clearToken();
+  }
+
   Future<void> _persistSession(Map<String, dynamic> data) async {
     await DioClient.persistToken(data['accessToken'] as String);
     await DioClient.persistRefreshToken(data['refreshToken'] as String);

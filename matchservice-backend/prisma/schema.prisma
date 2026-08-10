@@ -178,6 +178,14 @@ model User {
   emailVerified   Boolean   @default(false) @map("email_verified")
   emailVerifiedAt DateTime? @map("email_verified_at")
 
+  // --- LGPD/GDPR (see modules/users/data-privacy.service.ts) ---
+  // Set by the "right to erasure" flow. We anonymize rather than hard-delete
+  // (financial/contract records — WalletTransaction, EscrowProject,
+  // MaintenanceAgreement — must survive for accounting/dispute/tax
+  // retention obligations); this flag is what actually blocks the account
+  // from being usable again, independent of the scrambled email/password.
+  deletedAt DateTime? @map("deleted_at")
+
   // --- Anti-fraud / KYC (see fintech/guards/anti-fraud.guard.ts) ---
   accountStatus           AccountStatus @default(ACTIVE) @map("account_status")
   identityVerified        Boolean       @default(false) @map("identity_verified") // Stripe Identity — see fintech/identity.service.ts

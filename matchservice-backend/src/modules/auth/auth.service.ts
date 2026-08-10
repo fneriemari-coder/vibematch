@@ -87,7 +87,10 @@ export class AuthService {
 
   async login(dto: LoginDto): Promise<AuthResponse> {
     const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
-    if (!user) {
+    // Same generic message for "no such user" and "deleted account" — a
+    // deleted account's email is scrambled anyway (see DataPrivacyService),
+    // but this keeps the failure mode uniform rather than leaking state.
+    if (!user || user.deletedAt) {
       throw new UnauthorizedException('Invalid credentials');
     }
 

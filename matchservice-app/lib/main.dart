@@ -18,6 +18,7 @@ import 'logic/auth/auth_cubit.dart';
 import 'presentation/screens/home_toggle_screen.dart';
 import 'presentation/screens/discovery_feed_screen.dart';
 import 'presentation/screens/vibe_academy_screen.dart';
+import 'presentation/screens/data_privacy_screen.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
@@ -103,6 +104,11 @@ class _MatchServiceAppState extends State<MatchServiceApp> {
               final args = settings.arguments as Map<String, dynamic>?;
               return MaterialPageRoute(
                 builder: (_) => DiscoveryFeedScreen(focusPostId: args?['focusPostId'] as String?),
+              );
+            }
+            if (settings.name == '/privacy') {
+              return MaterialPageRoute(
+                builder: (_) => DataPrivacyScreen(authRepository: widget.authRepository),
               );
             }
             if (settings.name == '/vibe-academy') {
