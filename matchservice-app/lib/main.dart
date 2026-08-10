@@ -26,9 +26,16 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Firebase requires platform config files (google-services.json /
-  // GoogleService-Info.plist) to be dropped into android/ and ios/ before
-  // this succeeds — see matchservice-app/README.md.
-  await Firebase.initializeApp();
+  // GoogleService-Info.plist, or FirebaseOptions on web) to be dropped in
+  // before this succeeds — see matchservice-app/README.md. Until a real
+  // Firebase project is wired up, this throws on every platform; swallow it
+  // so the rest of the app (every screen not gated on push notifications)
+  // still boots instead of crashing at the splash screen.
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    debugPrint('Firebase.initializeApp() failed — push notifications disabled: $e');
+  }
 
   final dioClient = DioClient();
   final authRepository = AuthRepository(dioClient);
@@ -61,7 +68,12 @@ class _MatchServiceAppState extends State<MatchServiceApp> {
   @override
   void initState() {
     super.initState();
-    widget.notificationService.initialize();
+    // Same story as Firebase.initializeApp() above — without a configured
+    // Firebase project this throws immediately (FirebaseMessaging.instance
+    // needs an initialized app); don't let that take the rest of the UI down.
+    widget.notificationService.initialize().catchError((e) {
+      debugPrint('NotificationService.initialize() failed — push notifications disabled: $e');
+    });
     widget.notificationService.foregroundMessages.listen((message) {
       final banner = message.notification;
       if (banner == null) return;

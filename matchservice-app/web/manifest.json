@@ -1,0 +1,35 @@
+{
+    "name": "VIBE MATCH",
+    "short_name": "VIBE MATCH",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#1E112C",
+    "theme_color": "#1E112C",
+    "description": "VIBE MATCH — dual opt-in services marketplace with escrow, fintech, Discovery Feed, VibeAcademy and Live Masterminds.",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "icons/Icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-maskable-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "icons/Icon-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}

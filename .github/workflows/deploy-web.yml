@@ -1,0 +1,51 @@
+name: Deploy Web Preview
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    defaults:
+      run:
+        working-directory: matchservice-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+
+      - run: flutter pub get
+
+      # API_BASE_URL is a placeholder until a real backend is hosted (see
+      # README) — the UI is fully browsable, but requests will fail with
+      # network errors until this is repointed at a live API and the
+      # workflow is re-run (or dispatched manually) with the real value.
+      - name: flutter build web
+        run: >
+          flutter build web --release
+          --base-href /vibematch/
+          --dart-define=API_BASE_URL=${{ vars.API_BASE_URL || 'https://api.vibematch.example.invalid' }}
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: matchservice-app/build/web
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
