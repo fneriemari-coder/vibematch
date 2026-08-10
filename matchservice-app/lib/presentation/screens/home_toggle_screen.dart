@@ -8,6 +8,7 @@ import '../../data/repositories/wallet_repository.dart';
 import '../../logic/auth/auth_cubit.dart';
 import '../../logic/swipe/swipe_cubit.dart';
 import 'admin_dashboard.dart';
+import 'admin_users_screen.dart';
 import 'discovery_feed_screen.dart';
 import 'swipe_deck_screen.dart';
 import 'wallet_screen.dart';
@@ -46,6 +47,16 @@ class HomeToggleScreen extends StatelessWidget {
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => AdminDashboardScreen(adminRepository: context.read<AdminRepository>()),
+                ),
+              ),
+            ),
+          if (isAdmin)
+            IconButton(
+              icon: const Icon(Icons.people_outline, color: VibeMatchColors.scoreGold),
+              tooltip: 'Gerenciar Usuários',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => AdminUsersScreen(adminRepository: context.read<AdminRepository>()),
                 ),
               ),
             ),
