@@ -15,6 +15,8 @@ import { AiModule } from './modules/ai/ai.module';
 import { FeedModule } from './modules/feed/feed.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { AcademyModule } from './modules/academy/academy.module';
+import { ContentModule } from './modules/content/content.module';
+import { CommunitiesModule } from './modules/communities/communities.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { MediaModule } from './modules/media/media.module';
 import { MastermindModule } from './modules/mastermind/mastermind.module';
@@ -42,6 +44,8 @@ import { ObservabilityModule } from './common/observability/observability.module
     FeedModule,
     NotificationsModule,
     AcademyModule,
+    ContentModule,
+    CommunitiesModule,
     AdminModule,
     MediaModule,
     MastermindModule,

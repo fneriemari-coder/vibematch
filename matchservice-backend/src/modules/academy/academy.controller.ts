@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { AcademyService } from './academy.service';
 import { AiFactoryService } from './ai-factory.service';
 import { QuizGeneratorService } from './quiz-generator.service';
@@ -6,6 +6,8 @@ import { CertificateService } from './certificate.service';
 import { BuyCourseDto } from './dto/buy-course.dto';
 import { GenerateAiCourseDto } from './dto/generate-ai-course.dto';
 import { SubmitQuizDto } from './dto/submit-quiz.dto';
+import { ListCoursesQueryDto } from './dto/list-courses-query.dto';
+import { ListMentorsQueryDto } from './dto/list-mentors-query.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
@@ -23,6 +25,29 @@ export class AcademyController {
   @Post('buy-course')
   buyCourse(@CurrentUser() user: AuthenticatedUser, @Body() dto: BuyCourseDto) {
     return this.academyService.initiatePurchase(user.id, dto.courseId);
+  }
+
+  /**
+   * Course catalogue for the Academy tab. Declared before the `:courseId`
+   * route below — Nest matches in declaration order, and a bare
+   * `GET /academy/courses` would otherwise be swallowed by that param route.
+   */
+  @Get('courses')
+  listCourses(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: ListCoursesQueryDto,
+  ) {
+    return this.academyService.listCourses(user.id, query.search, query.limit, query.offset);
+  }
+
+  /**
+   * Curated mentors directory — profiles an admin has elevated with
+   * `isMentor`. Declared ahead of the parameterised routes below for the same
+   * declaration-order reason as `courses` above.
+   */
+  @Get('mentors')
+  listMentors(@Query() query: ListMentorsQueryDto) {
+    return this.academyService.listMentors(query.search, query.limit, query.offset);
   }
 
   /** Course + ordered modules — powers the Flutter VibeAcademyScreen (video player + material PDF). */

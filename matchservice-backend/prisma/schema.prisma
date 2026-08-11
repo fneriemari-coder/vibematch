@@ -159,6 +159,47 @@ enum PostStatus {
   BLOCKED
 }
 
+/// Lifecycle of an editorial Article. Only PUBLISHED rows are ever served by
+/// GET /content/articles — see modules/content/content.service.ts.
+enum ArticleStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+/// Editorial verticals of the "Conteúdo" hub. An enum rather than a free-text
+/// tag so the client can render a fixed, finite filter bar.
+enum ArticleCategory {
+  GESTAO
+  VENDAS
+  LIDERANCA
+  ESTRATEGIA
+  MARKETING
+  FINANCAS
+  TECNOLOGIA
+  CARREIRA
+}
+
+/// Commercial tiers of a paid peer group ("Círculo"). CIRCULO is the entry
+/// peer group, SCALE adds a dedicated mentor host + deal room, CONSELHO is a
+/// quarterly advisory board for the member's own company.
+enum CommunityTier {
+  CIRCULO
+  SCALE
+  CONSELHO
+}
+
+/// A seat's lifecycle. PENDING is written by POST /communities/:id/apply and
+/// only ever flips to ACTIVE from a real Stripe event (see
+/// stripe-webhook.service.ts). ROTATED_OUT is the reciprocity outcome — a
+/// member who only consumes and never answers loses the seat.
+enum MembershipStatus {
+  PENDING
+  ACTIVE
+  PAUSED
+  ROTATED_OUT
+}
+
 // ---------------------------------------------------------------------------
 // Models
 // ---------------------------------------------------------------------------
@@ -234,6 +275,11 @@ model User {
   quizAttempts QuizAttempt[]
   certificates IssuedCertificate[]
 
+  articles Article[] @relation("ArticleAuthor")
+
+  communitiesHosted    Community[]           @relation("CommunityHost")
+  communityMemberships CommunityMembership[]
+
   authTokens AuthToken[]
 
   @@map("users")
@@ -259,6 +305,13 @@ model UserProfile {
   b2bNetworking Boolean  @default(false) @map("b2b_networking")
   hourlyRate    Decimal? @map("hourly_rate") @db.Decimal(10, 2)
   rateCurrency  Currency @default(USD) @map("rate_currency")
+
+  // --- Mentors directory (GET /academy/mentors) ---
+  // Curated, admin-granted group — a user cannot flip `isMentor` on
+  // themselves; only PATCH /admin/users/:userId/mentor sets it.
+  isMentor       Boolean  @default(false) @map("is_mentor")
+  mentorHeadline String?  @map("mentor_headline")
+  mentorTopics   String[] @default([]) @map("mentor_topics")
 
   createdAt DateTime @updatedAt @map("updated_at")
 
@@ -754,6 +807,111 @@ model IssuedCertificate {
 
   @@index([userId, courseId])
   @@map("issued_certificates")
+}
+
+// ---------------------------------------------------------------------------
+// Conteúdo — editorial hub (blog)
+// ---------------------------------------------------------------------------
+
+/// A long-form editorial piece rendered by the "Conteúdo" tab. `body` is
+/// markdown; the client renders it. Written either by a user
+/// (POST /content/articles) or by ArticleGeneratorService
+/// (POST /content/generate-article), which is what `aiGenerated` records.
+model Article {
+  id       String @id @default(uuid())
+  authorId String @map("author_id")
+  author   User   @relation("ArticleAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  // Derived from `title` server-side (accent-stripped, hyphenated, numeric
+  // suffix on collision) — never accepted from the client, so it stays a
+  // stable, guessable public URL segment.
+  slug          String  @unique
+  title         String
+  excerpt       String
+  body          String  @db.Text
+  coverImageUrl String? @map("cover_image_url")
+
+  category    ArticleCategory
+  // Estimated reading time, computed from the body's word count at 200 wpm
+  // (minimum 1) — never client-supplied.
+  readMinutes Int             @map("read_minutes")
+
+  status      ArticleStatus @default(DRAFT)
+  viewCount   Int           @default(0) @map("view_count")
+  aiGenerated Boolean       @default(false) @map("ai_generated")
+  publishedAt DateTime?     @map("published_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([status, publishedAt])
+  @@index([category])
+  @@map("articles")
+}
+
+// ---------------------------------------------------------------------------
+// Comunidades ("Círculos") — paid peer groups
+// ---------------------------------------------------------------------------
+
+/// A small, curated paid peer group. Unlike a plain community product, a
+/// Círculo sits on top of the marketplace: members can hire each other under
+/// the platform's existing escrow, so `seatLimit` and `minKScore` are real
+/// gates rather than marketing copy.
+model Community {
+  id          String        @id @default(uuid())
+  tier        CommunityTier
+  name        String
+  tagline     String
+  description String
+
+  monthlyFee Decimal  @map("monthly_fee") @db.Decimal(10, 2)
+  currency   Currency
+  seatLimit  Int      @map("seat_limit")
+  cadence    String // e.g. "Encontro mensal ao vivo (Mesa Redonda)"
+
+  // K-Score floor (ProviderScore.financialHealthScore, 0-1000) a user must
+  // clear to take a seat — the tier is earned, not only purchased.
+  minKScore Int @default(0) @map("min_k_score")
+
+  focusTopics String[] @default([]) @map("focus_topics")
+
+  hostId String @map("host_id")
+  host   User   @relation("CommunityHost", fields: [hostId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  memberships CommunityMembership[]
+
+  @@index([tier])
+  @@map("communities")
+}
+
+/// One member's seat. `askedCount`/`answeredCount` are the reciprocity
+/// ledger — a seat is kept by both asking and answering, and
+/// `contributionScore` is what a rotation review reads before flipping a
+/// membership to ROTATED_OUT.
+model CommunityMembership {
+  id          String    @id @default(uuid())
+  communityId String    @map("community_id")
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  userId      String    @map("user_id")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  status MembershipStatus @default(PENDING)
+
+  askedCount        Int @default(0) @map("asked_count")
+  answeredCount     Int @default(0) @map("answered_count")
+  contributionScore Int @default(0) @map("contribution_score")
+
+  // Set from the checkout.session.completed webhook, never from the apply route.
+  stripeSubscriptionId String? @map("stripe_subscription_id")
+
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  @@unique([communityId, userId])
+  @@index([userId, status])
+  @@map("community_memberships")
 }
 
 /// Refresh sessions, email-verification links and password-reset links —

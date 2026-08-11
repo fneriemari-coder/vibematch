@@ -16,9 +16,10 @@ import { MaintenanceController } from './maintenance.controller';
 import { ConnectModule } from './connect.module';
 import { AcademyModule } from '../academy/academy.module';
 import { MastermindModule } from '../mastermind/mastermind.module';
+import { CommunitiesModule } from '../communities/communities.module';
 
 @Module({
-  imports: [AcademyModule, MastermindModule, ConnectModule],
+  imports: [AcademyModule, MastermindModule, CommunitiesModule, ConnectModule],
   providers: [
     FintechService,
     StripeWebhookService,

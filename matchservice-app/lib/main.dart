@@ -5,10 +5,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/api/dio_client.dart';
 import 'core/services/notification_service.dart';
 import 'core/theme/vibe_match_theme.dart';
-import 'data/models/user_models.dart';
 import 'data/repositories/academy_repository.dart';
 import 'data/repositories/admin_repository.dart';
 import 'data/repositories/auth_repository.dart';
+import 'data/repositories/chat_repository.dart';
+import 'data/repositories/community_repository.dart';
+import 'data/repositories/content_repository.dart';
 import 'data/repositories/feed_repository.dart';
 import 'data/repositories/mastermind_repository.dart';
 import 'data/repositories/media_repository.dart';
@@ -16,9 +18,10 @@ import 'data/repositories/post_repository.dart';
 import 'data/repositories/swipe_repository.dart';
 import 'data/repositories/wallet_repository.dart';
 import 'logic/auth/auth_cubit.dart';
-import 'presentation/screens/home_toggle_screen.dart';
+import 'presentation/screens/app_shell.dart';
 import 'presentation/screens/discovery_feed_screen.dart';
 import 'presentation/screens/vibe_academy_screen.dart';
+import 'presentation/screens/auth_screen.dart';
 import 'presentation/screens/data_privacy_screen.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
@@ -115,6 +118,11 @@ class _MatchServiceAppState extends State<MatchServiceApp> {
         RepositoryProvider(
           create: (_) => MastermindRepository(widget.dioClient),
         ),
+        RepositoryProvider(create: (_) => ChatRepository(widget.dioClient)),
+        RepositoryProvider(create: (_) => ContentRepository(widget.dioClient)),
+        RepositoryProvider(
+          create: (_) => CommunityRepository(widget.dioClient),
+        ),
       ],
       child: BlocProvider(
         create: (context) => AuthCubit(widget.authRepository)..bootstrap(),
@@ -154,10 +162,10 @@ class _MatchServiceAppState extends State<MatchServiceApp> {
           home: BlocBuilder<AuthCubit, AuthState>(
             builder: (context, state) {
               if (state is AuthAuthenticated) {
-                return const HomeToggleScreen();
+                return const AppShell();
               }
               if (state is AuthUnauthenticated || state is AuthError) {
-                return const _LoginScreen();
+                return AuthScreen(authRepository: widget.authRepository);
               }
               return const Scaffold(
                 backgroundColor: VibeMatchColors.background,
@@ -171,299 +179,6 @@ class _MatchServiceAppState extends State<MatchServiceApp> {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Entry screen for signed-out users. Toggles between sign in and sign up:
-/// AuthCubit.register() existed from the start but had no UI wired to it, so
-/// a fresh visitor hit a login form with no way to create the account it was
-/// asking them to log into.
-class _LoginScreen extends StatefulWidget {
-  const _LoginScreen();
-
-  @override
-  State<_LoginScreen> createState() => _LoginScreenState();
-}
-
-class _LoginScreenState extends State<_LoginScreen> {
-  final _email = TextEditingController();
-  final _password = TextEditingController();
-  final _name = TextEditingController();
-
-  bool _isRegistering = false;
-  UserRole _role = UserRole.client;
-  String _country = 'BR';
-
-  @override
-  void dispose() {
-    _email.dispose();
-    _password.dispose();
-    _name.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    final cubit = context.read<AuthCubit>();
-    final email = _email.text.trim();
-    if (_isRegistering) {
-      cubit.register(
-        email: email,
-        password: _password.text,
-        name: _name.text.trim(),
-        // The API takes the wire format (CLIENT/PROVIDER/BOTH), not Dart's
-        // lower-camel enum name.
-        role: _role.name.toUpperCase(),
-        country: _country,
-      );
-    } else {
-      cubit.login(email, _password.text);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: VibeMatchColors.background,
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: BlocConsumer<AuthCubit, AuthState>(
-            listener: (context, state) {
-              if (state is AuthError) {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text(state.message)));
-              }
-            },
-            builder: (context, state) {
-              final loading = state is AuthLoading;
-              return ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'VIBE MATCH',
-                        style: VibeMatchTextStyles.heading.copyWith(
-                          fontSize: 34,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        _isRegistering
-                            ? 'Crie sua conta para começar'
-                            : 'Entre para continuar',
-                        style: VibeMatchTextStyles.body,
-                      ),
-                      const SizedBox(height: 30),
-                      if (_isRegistering) ...[
-                        TextField(
-                          controller: _name,
-                          textCapitalization: TextCapitalization.words,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: const InputDecoration(
-                            labelText: 'Nome completo',
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                      TextField(
-                        controller: _email,
-                        keyboardType: TextInputType.emailAddress,
-                        autocorrect: false,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(labelText: 'Email'),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _password,
-                        obscureText: true,
-                        style: const TextStyle(color: Colors.white),
-                        onSubmitted: (_) => loading ? null : _submit(),
-                        decoration: InputDecoration(
-                          labelText: 'Senha',
-                          helperText:
-                              _isRegistering ? 'Mínimo de 8 caracteres' : null,
-                          helperStyle: const TextStyle(
-                            color: VibeMatchColors.textLow,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ),
-                      if (_isRegistering) ...[
-                        const SizedBox(height: 22),
-                        _ChoiceRow<UserRole>(
-                          label: 'Você quer',
-                          value: _role,
-                          options: const {
-                            UserRole.client: 'Contratar',
-                            UserRole.provider: 'Prestar serviço',
-                            UserRole.both: 'Os dois',
-                          },
-                          onChanged: (v) => setState(() => _role = v),
-                        ),
-                        const SizedBox(height: 16),
-                        _ChoiceRow<String>(
-                          label: 'País',
-                          value: _country,
-                          options: const {'BR': 'Brasil', 'US': 'EUA'},
-                          onChanged: (v) => setState(() => _country = v),
-                        ),
-                      ],
-                      const SizedBox(height: 28),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: loading ? null : _submit,
-                          child: loading
-                              ? const SizedBox(
-                                  height: 18,
-                                  width: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Text(
-                                  _isRegistering ? 'Criar conta' : 'Entrar',
-                                ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      TextButton(
-                        onPressed: loading
-                            ? null
-                            : () => setState(
-                                  () => _isRegistering = !_isRegistering,
-                                ),
-                        child: Text(
-                          _isRegistering
-                              ? 'Já tenho conta — entrar'
-                              : 'Ainda não tenho conta — criar',
-                        ),
-                      ),
-                      if (!_isRegistering)
-                        TextButton(
-                          onPressed: loading
-                              ? null
-                              : () => _showForgotPasswordDialog(context),
-                          child: const Text('Esqueci minha senha'),
-                        ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _showForgotPasswordDialog(BuildContext context) async {
-    final authRepository = context.read<AuthRepository>();
-    final emailController = TextEditingController(text: _email.text.trim());
-
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: VibeMatchColors.surface,
-        title: const Text(
-          'Esqueci minha senha',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: TextField(
-          controller: emailController,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(labelText: 'Email'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () async {
-              final email = emailController.text.trim();
-              Navigator.of(dialogContext).pop();
-              try {
-                await authRepository.forgotPassword(email);
-              } catch (_) {
-                // Swallow — the backend responds identically whether or not
-                // the email exists (see auth.service.ts forgotPassword),
-                // so a network error is the only real failure to hide here.
-              }
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Se este e-mail existir, enviamos um link de redefinição.',
-                    ),
-                  ),
-                );
-              }
-            },
-            child: const Text('Enviar'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Segmented selector used on the sign-up form (role, country). Renders the
-/// whole option set at once rather than hiding choices behind a dropdown —
-/// picking a role is a decision the person makes here, not a field they
-/// already know the answer to.
-class _ChoiceRow<T> extends StatelessWidget {
-  const _ChoiceRow({
-    required this.label,
-    required this.value,
-    required this.options,
-    required this.onChanged,
-  });
-
-  final String label;
-  final T value;
-  final Map<T, String> options;
-  final ValueChanged<T> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: VibeMatchTextStyles.body.copyWith(fontSize: 12.5)),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: options.entries.map((entry) {
-            final selected = entry.key == value;
-            return ChoiceChip(
-              label: Text(entry.value),
-              selected: selected,
-              onSelected: (_) => onChanged(entry.key),
-              selectedColor: VibeMatchColors.neonPrimary,
-              backgroundColor: VibeMatchColors.surface,
-              side: BorderSide(
-                color: selected
-                    ? VibeMatchColors.neonPrimary
-                    : Colors.white.withOpacity(0.12),
-              ),
-              labelStyle: TextStyle(
-                color: selected
-                    ? VibeMatchColors.background
-                    : VibeMatchColors.textHigh,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                fontSize: 13,
-              ),
-            );
-          }).toList(),
-        ),
-      ],
     );
   }
 }

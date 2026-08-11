@@ -1,5 +1,8 @@
+import 'mentor_models.dart';
+
 /// Models for GET /academy/courses/:courseId and GET /academy/course-connections/:courseId
-/// — the two endpoints VibeAcademyScreen renders after a retention-push deep link.
+/// — the two endpoints VibeAcademyScreen renders after a retention-push deep link —
+/// plus the two paginated catalogue endpoints behind CoursesScreen and MentorsScreen.
 
 class CourseModuleItem {
   const CourseModuleItem({
@@ -88,6 +91,107 @@ class RecommendedProvider {
         averageRating: double.tryParse('${json['averageRating'] ?? 0}') ?? 0,
         hourlyRate: json['hourlyRate']?.toString(),
         rateCurrency: json['rateCurrency'] as String? ?? 'USD',
+      );
+}
+
+/// A course as it appears in the catalogue grid — deliberately separate from
+/// [CourseDetail], which carries the modules and material URL that only the
+/// player screen needs.
+class CourseCard {
+  const CourseCard({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.price,
+    required this.currency,
+    required this.rating,
+    required this.mediaPreviewUrl,
+    required this.skillsTaught,
+    required this.instructorName,
+    required this.moduleCount,
+    required this.studentCount,
+    required this.enrolled,
+  });
+
+  final String id;
+  final String title;
+  final String description;
+
+  /// Prisma Decimal — string or number on the wire, so it is carried as a
+  /// string and formatted at the edge (see `formatMoney`).
+  final String? price;
+  final String currency;
+  final double rating;
+  final String? mediaPreviewUrl;
+  final List<String> skillsTaught;
+  final String instructorName;
+  final int moduleCount;
+  final int studentCount;
+
+  /// True once the person owns the course — the price is replaced by a
+  /// "Continuar" affordance rather than asking them to buy it twice.
+  final bool enrolled;
+
+  factory CourseCard.fromJson(Map<String, dynamic> json) => CourseCard(
+        id: json['id'] as String? ?? '',
+        title: json['title'] as String? ?? '',
+        description: json['description'] as String? ?? '',
+        price: json['price']?.toString(),
+        currency: json['currency'] as String? ?? 'BRL',
+        rating: double.tryParse('${json['rating'] ?? 0}') ?? 0,
+        mediaPreviewUrl: json['mediaPreviewUrl'] as String?,
+        skillsTaught:
+            (json['skillsTaught'] as List?)?.cast<String>() ?? const [],
+        instructorName: json['instructorName'] as String? ?? '',
+        moduleCount: int.tryParse('${json['moduleCount'] ?? 0}') ?? 0,
+        studentCount: int.tryParse('${json['studentCount'] ?? 0}') ?? 0,
+        enrolled: json['enrolled'] as bool? ?? false,
+      );
+}
+
+class CoursePage {
+  const CoursePage({
+    required this.courses,
+    required this.total,
+    required this.limit,
+    required this.offset,
+  });
+
+  final List<CourseCard> courses;
+  final int total;
+  final int limit;
+  final int offset;
+
+  factory CoursePage.fromJson(Map<String, dynamic> json) => CoursePage(
+        courses: (json['courses'] as List? ?? const [])
+            .map((e) => CourseCard.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        total: int.tryParse('${json['total'] ?? 0}') ?? 0,
+        limit: int.tryParse('${json['limit'] ?? 20}') ?? 20,
+        offset: int.tryParse('${json['offset'] ?? 0}') ?? 0,
+      );
+}
+
+class MentorPage {
+  const MentorPage({
+    required this.mentors,
+    required this.total,
+    required this.limit,
+    required this.offset,
+  });
+
+  final List<Mentor> mentors;
+  final int total;
+  final int limit;
+  final int offset;
+
+  factory MentorPage.fromJson(Map<String, dynamic> json) => MentorPage(
+        mentors: (json['mentors'] as List? ?? const [])
+            .map((e) => Mentor.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        total: int.tryParse('${json['total'] ?? 0}') ?? 0,
+        limit: int.tryParse('${json['limit'] ?? 20}') ?? 20,
+        offset: int.tryParse('${json['offset'] ?? 0}') ?? 0,
       );
 }
 

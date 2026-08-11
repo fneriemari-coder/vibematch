@@ -5,6 +5,7 @@ import { InstallmentStatus, Prisma, SubscriptionStatus, SubscriptionTier, Wallet
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AcademyService } from '../academy/academy.service';
 import { MastermindService } from '../mastermind/mastermind.service';
+import { CommunitiesService } from '../communities/communities.service';
 import { ConnectService } from './connect.service';
 
 /**
@@ -26,6 +27,7 @@ export class StripeWebhookService {
     private readonly config: ConfigService,
     private readonly academyService: AcademyService,
     private readonly mastermindService: MastermindService,
+    private readonly communitiesService: CommunitiesService,
     private readonly connectService: ConnectService,
   ) {
     this.stripe = new Stripe(this.config.get('STRIPE_SECRET_KEY') ?? '', {
@@ -241,12 +243,27 @@ export class StripeWebhookService {
   }
 
   /**
-   * Routes one-off Checkout purchases by `metadata.kind` — currently only
-   * VibeAcademy course purchases use `mode: 'payment'` Checkout Sessions.
-   * Subscription-mode Checkout Sessions (app tiers, maintenance contracts)
-   * are confirmed via `invoice.paid` instead, not this event.
+   * Routes completed Checkout Sessions by `metadata.kind`.
+   *
+   * Two shapes land here:
+   *  - `mode: 'payment'` one-offs (course purchase, mastermind booking),
+   *    which must additionally be `payment_status: 'paid'`;
+   *  - `mode: 'subscription'` community memberships, whose first invoice is
+   *    settled as part of the session, so the seat opens here rather than
+   *    waiting for a separate `invoice.paid`.
+   *
+   * App subscription tiers and maintenance contracts are deliberately NOT
+   * handled here — they're matched on the Stripe customer in
+   * `invoice.paid`, and they carry no session metadata to route on.
    */
   private async handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
+    if (session.mode === 'subscription') {
+      if (session.metadata?.kind === 'community_membership') {
+        await this.communitiesService.completeMembership(session);
+      }
+      return;
+    }
+
     if (session.mode !== 'payment') return;
     if (session.payment_status !== 'paid') return;
 

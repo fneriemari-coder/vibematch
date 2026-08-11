@@ -22,9 +22,10 @@ describe('StripeWebhookService — maintenance revenue split', () => {
     };
     const academyService = { completePurchase: jest.fn() };
     const mastermindService = { completeBooking: jest.fn() };
+    const communitiesService = { completeMembership: jest.fn() };
     const connectService = { payoutOrLedgerOnly: jest.fn().mockResolvedValue({ stripeTransferId: null }) };
 
-    const service = new StripeWebhookService(prisma, buildConfig() as any, academyService as any, mastermindService as any, connectService as any);
+    const service = new StripeWebhookService(prisma, buildConfig() as any, academyService as any, mastermindService as any, communitiesService as any, connectService as any);
 
     const invoice: any = { id: 'in_123', amount_paid: 20000 }; // $200.00 in cents
 
@@ -66,8 +67,9 @@ describe('StripeWebhookService — maintenance revenue split', () => {
     };
     const academyService = { completePurchase: jest.fn() };
     const mastermindService = { completeBooking: jest.fn() };
+    const communitiesService = { completeMembership: jest.fn() };
     const connectService = { payoutOrLedgerOnly: jest.fn().mockResolvedValue({ stripeTransferId: null }) };
-    const service = new StripeWebhookService(prisma, buildConfig() as any, academyService as any, mastermindService as any, connectService as any);
+    const service = new StripeWebhookService(prisma, buildConfig() as any, academyService as any, mastermindService as any, communitiesService as any, connectService as any);
 
     await (service as any).handleMaintenanceInvoicePaid('agreement-2', { id: 'in_456', amount_paid: 10000 });
 

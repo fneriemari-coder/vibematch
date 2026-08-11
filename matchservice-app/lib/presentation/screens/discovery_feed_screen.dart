@@ -4,7 +4,10 @@ import '../../core/theme/vibe_match_theme.dart';
 import '../../data/models/feed_models.dart';
 import '../../logic/feed/feed_cubit.dart';
 import '../../logic/swipe/swipe_cubit.dart';
+import '../../data/repositories/media_repository.dart';
+import '../../data/repositories/post_repository.dart';
 import '../widgets/discovery_post_card.dart';
+import 'create_post_screen.dart';
 import 'swipe_deck_screen.dart';
 
 /// TikTok-style infinite vertical feed. The AI search bar up top hits
@@ -69,6 +72,22 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: VibeMatchColors.background,
+      // CreatePostScreen was written but nothing ever opened it, so the feed
+      // was read-only in practice — this is the composer's only entry point.
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => CreatePostScreen(
+              postRepository: context.read<PostRepository>(),
+              mediaRepository: context.read<MediaRepository>(),
+            ),
+          ),
+        ),
+        backgroundColor: VibeMatchColors.neonPrimary,
+        foregroundColor: VibeMatchColors.ink,
+        icon: const Icon(Icons.edit_rounded, size: 18),
+        label: const Text('Publicar'),
+      ),
       body: Stack(
         children: [
           BlocBuilder<FeedCubit, FeedState>(

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { AccountStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
+import { SetMentorDto } from './dto/set-mentor.dto';
 
 const USER_LIST_SELECT = {
   id: true,
@@ -89,6 +90,37 @@ export class AdminUsersService {
       where: { id: userId },
       data: { identityVerified },
       select: USER_LIST_SELECT,
+    });
+  }
+
+  /**
+   * Grants/revokes the curated mentor flag on the user's profile — the only
+   * writer of `UserProfile.isMentor`, so mentor status can never be
+   * self-assigned.
+   *
+   * `headline`/`topics` are written only when supplied, so a bare
+   * `{ isMentor: true }` re-grant doesn't wipe copy an admin wrote earlier.
+   * Revoking keeps them for the same reason: re-promoting a mentor shouldn't
+   * cost their headline.
+   */
+  async setMentor(userId: string, dto: SetMentorDto) {
+    const profile = await this.prisma.userProfile.findUnique({ where: { userId }, select: { id: true } });
+    if (!profile) throw new NotFoundException('User profile not found');
+
+    return this.prisma.userProfile.update({
+      where: { userId },
+      data: {
+        isMentor: dto.isMentor,
+        ...(dto.headline !== undefined ? { mentorHeadline: dto.headline } : {}),
+        ...(dto.topics !== undefined ? { mentorTopics: dto.topics } : {}),
+      },
+      select: {
+        userId: true,
+        name: true,
+        isMentor: true,
+        mentorHeadline: true,
+        mentorTopics: true,
+      },
     });
   }
 
