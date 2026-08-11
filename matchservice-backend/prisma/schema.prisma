@@ -200,6 +200,29 @@ enum MembershipStatus {
   ROTATED_OUT
 }
 
+/// Verticals of the external news feed ("Radar"). A fixed enum rather than a
+/// free-text tag so the client can render a stable filter bar, and so a
+/// mis-tagged source can never invent a category — the category is a property
+/// of the NewsSource we curated, not of anything the publisher sends us.
+enum NewsCategory {
+  ENGENHARIA
+  MARKETING
+  FINANCAS
+  PUBLICIDADE
+  TECNOLOGIA
+  GESTAO
+  EMPREENDEDORISMO
+}
+
+/// What a syndicated item actually *is*, which is what decides how the client
+/// renders the card: ARTICLE = headline + excerpt + photo, VIDEO = inline
+/// player (YouTube channel feeds), PAPER = academic/research abstract.
+enum NewsMediaKind {
+  ARTICLE
+  VIDEO
+  PAPER
+}
+
 // ---------------------------------------------------------------------------
 // Models
 // ---------------------------------------------------------------------------
@@ -280,6 +303,8 @@ model User {
   communitiesHosted    Community[]           @relation("CommunityHost")
   communityMemberships CommunityMembership[]
 
+  savedNewsItems SavedNewsItem[]
+
   authTokens AuthToken[]
 
   @@map("users")
@@ -349,6 +374,7 @@ model Match {
   chatMessages  ChatMessage[]
 
   @@unique([userOneId, userTwoId, type])
+  @@index([userTwoId])
   @@map("matches")
 }
 
@@ -368,6 +394,10 @@ model EscrowProject {
   // true once the provider has used /wallet/advance to cash out early on this project
   advanced Boolean @default(false)
 
+  // Captured when the funding Checkout Session completes. Without it a refund
+  // has to search Stripe by metadata, which is slow and not reliably unique.
+  stripePaymentIntentId String? @map("stripe_payment_intent_id")
+
   // BNPL_FINANCED: provider is paid upfront (minus risk fee) via bnpl.service.ts,
   // client repays over `installmentCount` scheduled charges (see BnplInstallment).
   paymentModel     PaymentModel @default(UPFRONT) @map("payment_model")
@@ -384,6 +414,11 @@ model EscrowProject {
   bnplInstallments     BnplInstallment[]
   maintenanceAgreement MaintenanceAgreement?
 
+  // AntiFraudGuard.checkVelocity and ScoreEngine both filter on these on
+  // every financial request; without indexes each one was a sequential scan.
+  @@index([clientId])
+  @@index([providerId])
+  @@index([status])
   @@map("escrow_projects")
 }
 
@@ -421,6 +456,8 @@ model Subscription {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  // Looked up by customer id on every invoice.paid webhook.
+  @@index([stripeCustomerId])
   @@map("subscriptions")
 }
 
@@ -572,6 +609,8 @@ model BnplInstallment {
 
   @@unique([escrowProjectId, installmentNumber])
   @@index([status, dueDate])
+  // Looked up by invoice id on every invoice webhook.
+  @@index([stripeInvoiceId])
   @@map("bnpl_installments")
 }
 
@@ -635,6 +674,8 @@ model MaintenanceAgreement {
   tickets AITicketMonitor[]
 
   @@index([status])
+  // Looked up by subscription id on every invoice webhook.
+  @@index([stripeSubscriptionId])
   @@map("maintenance_agreements")
 }
 
@@ -686,9 +727,10 @@ model BusinessCourse {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  enrollments CourseEnrollment[]
-  modules     CourseModule[]
-  quiz        CourseQuiz?
+  enrollments  CourseEnrollment[]
+  modules      CourseModule[]
+  quiz         CourseQuiz?
+  certificates IssuedCertificate[]
 
   @@index([instructorId])
   @@map("business_courses")
@@ -800,12 +842,19 @@ model IssuedCertificate {
   id              String   @id @default(uuid())
   userId          String   @map("user_id")
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  courseId        String   @map("course_id")
-  certificateUuid String   @unique @map("certificate_uuid")
-  downloadUrl     String   @map("download_url")
-  issuedAt        DateTime @default(now()) @map("issued_at")
+  courseId        String         @map("course_id")
+  // Was a bare String with no relation, so deleting a course silently
+  // orphaned every certificate that referenced it. Restrict, not Cascade —
+  // a credential record must outlive the catalogue entry that produced it.
+  course          BusinessCourse @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  certificateUuid String         @unique @map("certificate_uuid")
+  downloadUrl     String         @map("download_url")
+  issuedAt        DateTime       @default(now()) @map("issued_at")
 
-  @@index([userId, courseId])
+  // One certificate per user per course. Without this a learner could pass
+  // the same quiz repeatedly, and each pass awarded +50 K-Score — which
+  // gates paid community seats.
+  @@unique([userId, courseId])
   @@map("issued_certificates")
 }
 
@@ -932,4 +981,111 @@ model AuthToken {
 
   @@index([userId, purpose])
   @@map("auth_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// Radar — external news/video/paper feed (see modules/feed/news-ingestion.service.ts)
+// ---------------------------------------------------------------------------
+
+/// One curated RSS/Atom endpoint we syndicate from. `category` and
+/// `mediaKind` live here rather than on the item because they are an
+/// editorial decision about the *source* — a publisher's own tags are
+/// inconsistent and untrusted. `lastFetchedAt`/`lastError` are the operator's
+/// only window into a third-party host that has quietly started failing.
+model NewsSource {
+  id        String        @id @default(uuid())
+  name      String
+  feedUrl   String        @unique @map("feed_url")
+  siteUrl   String        @map("site_url")
+  category  NewsCategory
+  mediaKind NewsMediaKind @default(ARTICLE) @map("media_kind")
+  language  String        @default("pt")
+  active    Boolean       @default(true)
+
+  lastFetchedAt DateTime? @map("last_fetched_at")
+  lastError     String?   @map("last_error")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  items NewsItem[]
+
+  @@index([active, category])
+  @@map("news_sources")
+}
+
+/// A single syndicated entry. We store only what a feed reader is entitled to
+/// keep — headline, the publisher's own excerpt, a thumbnail and a link back
+/// to the original — never the full article body. See the header comment on
+/// news-ingestion.service.ts for why that line is where it is.
+///
+/// `externalId` is the feed's own guid (or the link when a feed omits one);
+/// the [sourceId, externalId] unique is what makes re-running ingestion an
+/// upsert instead of a duplicate storm.
+model NewsItem {
+  id       String     @id @default(uuid())
+  sourceId String     @map("source_id")
+  source   NewsSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  externalId String  @map("external_id")
+  title      String
+  summary    String  @db.Text
+  url        String
+  imageUrl   String? @map("image_url")
+  videoUrl   String? @map("video_url")
+  author     String?
+
+  category  NewsCategory
+  mediaKind NewsMediaKind @map("media_kind")
+
+  publishedAt DateTime @map("published_at")
+
+  viewsCount Int @default(0) @map("views_count")
+  savesCount Int @default(0) @map("saves_count")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  savedBy SavedNewsItem[]
+
+  @@unique([sourceId, externalId])
+  @@index([publishedAt])
+  @@index([category, publishedAt])
+  @@map("news_items")
+}
+
+/// A "salvar para depois" bookmark. The unique pair is what makes the
+/// save/unsave routes idempotent — POSTing twice can't double-count.
+model SavedNewsItem {
+  id     String @id @default(uuid())
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  newsItemId String   @map("news_item_id")
+  newsItem   NewsItem @relation(fields: [newsItemId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, newsItemId])
+  @@index([userId, createdAt])
+  @@map("saved_news_items")
+}
+
+/// Every Stripe event id we have already processed.
+///
+/// Stripe retries aggressively and replays are normal, not exceptional. Some
+/// handlers guarded themselves and some did not — a replayed `invoice.paid`
+/// for a maintenance agreement wrote a second revenue row, incremented the
+/// wallet again and fired another real Transfer. Recording the event id once,
+/// at the top of the dispatcher, closes every one of those holes in a single
+/// place instead of relying on each handler to remember.
+///
+/// The primary key IS the Stripe event id, so a concurrent duplicate loses the
+/// insert with P2002 rather than racing past a read-then-write check.
+model ProcessedStripeEvent {
+  id          String   @id
+  type        String
+  processedAt DateTime @default(now()) @map("processed_at")
+
+  @@index([processedAt])
+  @@map("processed_stripe_events")
 }

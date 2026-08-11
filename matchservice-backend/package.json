@@ -1,7 +1,7 @@
 {
   "name": "matchservice-backend",
   "version": "0.1.0",
-  "description": "MatchService \u2014 dual opt-in services marketplace (Cloud/Local/B2B) with escrow, fintech and SaaS Pro tooling.",
+  "description": "MatchService — dual opt-in services marketplace (Cloud/Local/B2B) with escrow, fintech and SaaS Pro tooling.",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
@@ -17,7 +17,11 @@
     "test": "jest",
     "test:moderation": "ts-node src/modules/ai/tests/moderation-stress-test.ts",
     "build:seed": "tsc prisma/seed.ts --outDir dist-seed --module commonjs --target ES2021 --esModuleInterop --skipLibCheck --resolveJsonModule",
-    "seed:prod": "node dist-seed/seed.js"
+    "seed:prod": "node dist-seed/seed.js",
+    "build:seed-sim": "tsc prisma/seed-simulation.ts --outDir dist-seed --rootDir . --module commonjs --target ES2021 --experimentalDecorators --emitDecoratorMetadata --esModuleInterop --skipLibCheck --resolveJsonModule && node prisma/build-seed-shims.js seed-simulation",
+    "seed:sim": "node dist-seed/seed-simulation.js",
+    "build:seed-ai-courses": "tsc prisma/seed-ai-courses.ts --outDir dist-seed --rootDir . --module commonjs --target ES2021 --experimentalDecorators --emitDecoratorMetadata --esModuleInterop --skipLibCheck --resolveJsonModule && node prisma/build-seed-shims.js seed-ai-courses",
+    "seed:ai-courses": "node dist-seed/seed-ai-courses.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1106.0",
@@ -49,6 +53,7 @@
     "prisma": "^5.19.0",
     "prom-client": "^15.1.3",
     "reflect-metadata": "^0.2.2",
+    "rss-parser": "^3.13.0",
     "rxjs": "^7.8.1",
     "socket.io": "^4.7.5",
     "stripe": "^16.8.0"

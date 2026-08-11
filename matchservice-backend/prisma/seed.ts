@@ -5,6 +5,8 @@ import {
   CommunityTier,
   Currency,
   MembershipStatus,
+  NewsCategory,
+  NewsMediaKind,
   Role,
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
@@ -93,6 +95,20 @@ interface SeedMembership {
   memberKey: string;
   askedCount: number;
   answeredCount: number;
+}
+
+/**
+ * A curated public RSS/Atom endpoint for the Radar feed. `category` and
+ * `mediaKind` are OUR editorial decision about the publisher, not something
+ * read out of the feed — publishers' own tags are inconsistent and untrusted.
+ */
+interface SeedNewsSource {
+  name: string;
+  feedUrl: string;
+  siteUrl: string;
+  category: NewsCategory;
+  mediaKind?: NewsMediaKind;
+  language?: string;
 }
 
 const CREATORS: SeedCreator[] = [
@@ -799,6 +815,206 @@ const POSTS: SeedPost[] = [
   },
 ];
 
+/**
+ * Radar sources — the content engine behind "o app não é interativo".
+ *
+ * Weighted toward Brazilian Portuguese business publishing, with every
+ * NewsCategory covered so the filter bar is never empty, several YouTube
+ * channel feeds so the feed has real video, and academic sources for the
+ * theses/papers side.
+ *
+ * Only genuinely public, well-known feed endpoints are listed here — no
+ * padding. If a publisher ever moves or kills its feed, ingestion records the
+ * failure on NewsSource.lastError rather than breaking the run; flip `active`
+ * to false to retire it.
+ */
+const NEWS_SOURCES: SeedNewsSource[] = [
+  // --- Engenharia ---------------------------------------------------------
+  {
+    name: 'Massa Cinzenta (Cimento Itambé)',
+    feedUrl: 'https://www.cimentoitambe.com.br/feed/',
+    siteUrl: 'https://www.cimentoitambe.com.br',
+    category: NewsCategory.ENGENHARIA,
+  },
+  {
+    name: 'Sienge — Blog da Construção',
+    feedUrl: 'https://www.sienge.com.br/blog/feed/',
+    siteUrl: 'https://www.sienge.com.br',
+    category: NewsCategory.ENGENHARIA,
+  },
+  {
+    name: 'IEEE Spectrum',
+    feedUrl: 'https://spectrum.ieee.org/feeds/feed.rss',
+    siteUrl: 'https://spectrum.ieee.org',
+    category: NewsCategory.ENGENHARIA,
+    language: 'en',
+  },
+  {
+    name: 'ScienceDaily — Engineering',
+    feedUrl: 'https://www.sciencedaily.com/rss/matter_energy/engineering.xml',
+    siteUrl: 'https://www.sciencedaily.com',
+    category: NewsCategory.ENGENHARIA,
+    mediaKind: NewsMediaKind.PAPER,
+    language: 'en',
+  },
+
+  // --- Marketing ----------------------------------------------------------
+  {
+    name: 'Rock Content',
+    feedUrl: 'https://rockcontent.com/br/blog/feed/',
+    siteUrl: 'https://rockcontent.com/br',
+    category: NewsCategory.MARKETING,
+  },
+  {
+    name: 'RD Station',
+    feedUrl: 'https://www.rdstation.com/blog/feed/',
+    siteUrl: 'https://www.rdstation.com',
+    category: NewsCategory.MARKETING,
+  },
+  {
+    name: 'B9',
+    feedUrl: 'https://www.b9.com.br/feed/',
+    siteUrl: 'https://www.b9.com.br',
+    category: NewsCategory.MARKETING,
+  },
+
+  // --- Publicidade --------------------------------------------------------
+  {
+    name: 'Meio & Mensagem',
+    feedUrl: 'https://www.meioemensagem.com.br/feed',
+    siteUrl: 'https://www.meioemensagem.com.br',
+    category: NewsCategory.PUBLICIDADE,
+  },
+  {
+    name: 'Adnews',
+    feedUrl: 'https://adnews.com.br/feed/',
+    siteUrl: 'https://adnews.com.br',
+    category: NewsCategory.PUBLICIDADE,
+  },
+  {
+    name: 'Propmark',
+    feedUrl: 'https://propmark.com.br/feed/',
+    siteUrl: 'https://propmark.com.br',
+    category: NewsCategory.PUBLICIDADE,
+  },
+
+  // --- Finanças -----------------------------------------------------------
+  {
+    name: 'InfoMoney',
+    feedUrl: 'https://www.infomoney.com.br/feed/',
+    siteUrl: 'https://www.infomoney.com.br',
+    category: NewsCategory.FINANCAS,
+  },
+  {
+    name: 'g1 — Economia',
+    feedUrl: 'https://g1.globo.com/rss/g1/economia/',
+    siteUrl: 'https://g1.globo.com/economia',
+    category: NewsCategory.FINANCAS,
+  },
+  {
+    name: 'arXiv — Quantitative Finance (q-fin.GN)',
+    feedUrl: 'https://rss.arxiv.org/rss/q-fin.GN',
+    siteUrl: 'https://arxiv.org',
+    category: NewsCategory.FINANCAS,
+    mediaKind: NewsMediaKind.PAPER,
+    language: 'en',
+  },
+
+  // --- Tecnologia ---------------------------------------------------------
+  {
+    name: 'Tecnoblog',
+    feedUrl: 'https://tecnoblog.net/feed/',
+    siteUrl: 'https://tecnoblog.net',
+    category: NewsCategory.TECNOLOGIA,
+  },
+  {
+    name: 'Olhar Digital',
+    feedUrl: 'https://olhardigital.com.br/feed/',
+    siteUrl: 'https://olhardigital.com.br',
+    category: NewsCategory.TECNOLOGIA,
+  },
+  {
+    name: 'Canaltech',
+    feedUrl: 'https://canaltech.com.br/rss/',
+    siteUrl: 'https://canaltech.com.br',
+    category: NewsCategory.TECNOLOGIA,
+  },
+  {
+    name: 'g1 — Tecnologia',
+    feedUrl: 'https://g1.globo.com/rss/g1/tecnologia/',
+    siteUrl: 'https://g1.globo.com/tecnologia',
+    category: NewsCategory.TECNOLOGIA,
+  },
+  {
+    // YouTube exposes every channel as an Atom feed at this endpoint — the
+    // entries carry <media:group>, which is where the thumbnail comes from.
+    name: 'Google for Developers (YouTube)',
+    feedUrl: 'https://www.youtube.com/feeds/videos.xml?channel_id=UC_x5XG1OV2P6uZZ5FSM9Ttw',
+    siteUrl: 'https://www.youtube.com',
+    category: NewsCategory.TECNOLOGIA,
+    mediaKind: NewsMediaKind.VIDEO,
+    language: 'en',
+  },
+
+  // --- Gestão -------------------------------------------------------------
+  {
+    name: 'Exame',
+    feedUrl: 'https://exame.com/feed/',
+    siteUrl: 'https://exame.com',
+    category: NewsCategory.GESTAO,
+  },
+  {
+    name: 'Época Negócios',
+    feedUrl: 'https://epocanegocios.globo.com/rss/ultimas/feed.xml',
+    siteUrl: 'https://epocanegocios.globo.com',
+    category: NewsCategory.GESTAO,
+  },
+  {
+    name: 'arXiv — General Economics (econ.GN)',
+    feedUrl: 'https://rss.arxiv.org/rss/econ.GN',
+    siteUrl: 'https://arxiv.org',
+    category: NewsCategory.GESTAO,
+    mediaKind: NewsMediaKind.PAPER,
+    language: 'en',
+  },
+  {
+    name: 'TED (YouTube)',
+    feedUrl: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCAuUUnT6oDeKwE6v1NGQxug',
+    siteUrl: 'https://www.youtube.com',
+    category: NewsCategory.GESTAO,
+    mediaKind: NewsMediaKind.VIDEO,
+    language: 'en',
+  },
+
+  // --- Empreendedorismo ---------------------------------------------------
+  {
+    name: 'Startupi',
+    feedUrl: 'https://startupi.com.br/feed/',
+    siteUrl: 'https://startupi.com.br',
+    category: NewsCategory.EMPREENDEDORISMO,
+  },
+  {
+    name: 'Endeavor Brasil',
+    feedUrl: 'https://endeavor.org.br/feed/',
+    siteUrl: 'https://endeavor.org.br',
+    category: NewsCategory.EMPREENDEDORISMO,
+  },
+  {
+    name: 'Pequenas Empresas & Grandes Negócios',
+    feedUrl: 'https://revistapegn.globo.com/rss/ultimas/feed.xml',
+    siteUrl: 'https://revistapegn.globo.com',
+    category: NewsCategory.EMPREENDEDORISMO,
+  },
+  {
+    name: 'Y Combinator (YouTube)',
+    feedUrl: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCcefcZRL2oaA_uBNeo5UOWg',
+    siteUrl: 'https://www.youtube.com',
+    category: NewsCategory.EMPREENDEDORISMO,
+    mediaKind: NewsMediaKind.VIDEO,
+    language: 'en',
+  },
+];
+
 async function main() {
   console.log('Seeding MatchService launch-week Discovery Feed content...');
 
@@ -1038,10 +1254,43 @@ async function main() {
     });
   }
 
+  // --- Radar (external news sources) --------------------------------------
+  // Upsert-by-feedUrl rather than the delete-then-create shape used above,
+  // and deliberately so: NewsItem cascades off NewsSource, and SavedNewsItem
+  // cascades off NewsItem. A `deleteMany` here would throw away every
+  // ingested article AND every bookmark a real user had saved, just because
+  // someone re-ran the seed. Upserting is still scoped the same way the other
+  // resets are — it only ever touches rows whose feedUrl is in this list, and
+  // a source an operator added by hand is left alone.
+  //
+  // `active` is intentionally absent from the update payload: an operator who
+  // disabled a rotten feed shouldn't have it silently switched back on.
+  for (const source of NEWS_SOURCES) {
+    await prisma.newsSource.upsert({
+      where: { feedUrl: source.feedUrl },
+      update: {
+        name: source.name,
+        siteUrl: source.siteUrl,
+        category: source.category,
+        mediaKind: source.mediaKind ?? NewsMediaKind.ARTICLE,
+        language: source.language ?? 'pt',
+      },
+      create: {
+        name: source.name,
+        feedUrl: source.feedUrl,
+        siteUrl: source.siteUrl,
+        category: source.category,
+        mediaKind: source.mediaKind ?? NewsMediaKind.ARTICLE,
+        language: source.language ?? 'pt',
+      },
+    });
+  }
+
   console.log(
     `Seeded ${CREATORS.length} creators, ${POSTS.length} Discovery Feed posts, ` +
       `${COURSES.length} courses, ${MASTERMINDS.length} masterminds, ${MENTORS.length} mentors, ` +
-      `${ARTICLES.length} articles and ${COMMUNITIES.length} communities with ${MEMBERSHIPS.length} active seats.`,
+      `${ARTICLES.length} articles, ${COMMUNITIES.length} communities with ${MEMBERSHIPS.length} active seats ` +
+      `and ${NEWS_SOURCES.length} Radar news sources.`,
   );
 }
 
