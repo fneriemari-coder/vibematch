@@ -43,8 +43,13 @@ async function bootstrap() {
   app.useGlobalFilters(new SentryExceptionsFilter(httpAdapter));
 
   const port = config.get<number>('PORT') ?? 3000;
-  await app.listen(port);
-  Logger.log(`MatchService backend listening on :${port}`, 'Bootstrap');
+  // Bind explicitly to 0.0.0.0, not Node's default (`::`). Container
+  // platforms (Railway, Render, Fly, Cloud Run) route to the container over
+  // IPv4, and a server listening only on the IPv6 wildcard answers nothing —
+  // which surfaces as a healthy-looking container whose every request times
+  // out at the edge proxy ("Application failed to respond").
+  await app.listen(port, '0.0.0.0');
+  Logger.log(`MatchService backend listening on 0.0.0.0:${port}`, 'Bootstrap');
 }
 
 bootstrap();
