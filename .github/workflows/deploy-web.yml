@@ -33,15 +33,17 @@ jobs:
 
       - run: flutter pub get
 
-      # API_BASE_URL is a placeholder until a real backend is hosted (see
-      # README) — the UI is fully browsable, but requests will fail with
-      # network errors until this is repointed at a live API and the
-      # workflow is re-run (or dispatched manually) with the real value.
+      # Points at the live Railway deployment. Override per-environment by
+      # setting an API_BASE_URL repository variable — that wins over the
+      # default below without touching this file.
+      # The API must keep this Pages origin in its CORS_ORIGIN allowlist
+      # (https://fneriemari-coder.github.io), or the browser blocks every
+      # request even though the API itself is healthy.
       - name: flutter build web
         run: >
           flutter build web --release
           --base-href /vibematch/
-          --dart-define=API_BASE_URL=${{ vars.API_BASE_URL || 'https://api.vibematch.example.invalid' }}
+          --dart-define=API_BASE_URL=${{ vars.API_BASE_URL || 'https://vibematch-production-ea5b.up.railway.app' }}
 
       - uses: actions/upload-pages-artifact@v3
         with:
