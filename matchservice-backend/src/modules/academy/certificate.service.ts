@@ -1,5 +1,6 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Prisma } from '@prisma/client';
 import PDFDocument from 'pdfkit';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -33,6 +34,18 @@ export class CertificateService {
     });
     if (!quiz) throw new NotFoundException('Quiz not found');
 
+    // The exam is part of the course the caller bought. Without this check any
+    // authenticated user could submit any quiz by id and walk away with a
+    // certificate — and +50 K-Score — for a course they never paid for; the
+    // K-Score is what gates paid community seats and ranks the mentor
+    // directory, so it was a free path into both.
+    const enrollment = await this.prisma.courseEnrollment.findUnique({
+      where: { userId_courseId: { userId, courseId: quiz.courseId } },
+    });
+    if (!enrollment) {
+      throw new ForbiddenException('You must be enrolled in this course to take its exam');
+    }
+
     const questions = quiz.questionsJson as unknown as QuizQuestion[];
     const total = questions.length;
     let correct = 0;
@@ -51,19 +64,37 @@ export class CertificateService {
       return { attempt, certificate: null };
     }
 
-    // Certificate issuance and the K-Score bonus are independent side
-    // effects of the same pass event — run them in parallel, per spec
-    // ("execute uma query paralela"). Neither should block the other; a
-    // failure in the bonus must not prevent the certificate (and vice versa).
-    const [certificate] = await Promise.all([
-      this.issueCertificate(userId, quiz.courseId, quiz.course.title),
-      this.bumpProviderScore(userId),
-    ]);
+    // A course is certified once. Re-passing an exam previously minted a
+    // fresh certificate AND another +50 K-Score every time.
+    const existingCertificate = await this.prisma.issuedCertificate.findFirst({
+      where: { userId, courseId: quiz.courseId },
+    });
+    if (existingCertificate) {
+      this.logger.log(
+        `Quiz attempt ${attempt.id}: user ${userId} PASSED (${scorePercentage}%) — certificate ` +
+          `${existingCertificate.id} already issued for course ${quiz.courseId}, no new award`,
+      );
+      return { attempt, certificate: existingCertificate };
+    }
+
+    const certificate = await this.issueCertificate(userId, quiz.courseId, quiz.course.title);
 
     this.logger.log(`Quiz attempt ${attempt.id}: user ${userId} PASSED (${scorePercentage}%) — certificate ${certificate.id} issued`);
     return { attempt, certificate };
   }
 
+  /**
+   * Renders + uploads the PDF (slow, external), then commits the certificate
+   * row AND the K-Score bonus in ONE transaction.
+   *
+   * These were a `Promise.all` of two independent writes, so two concurrent
+   * passing submissions could each issue a certificate and each award the
+   * bonus. The real arbiter is `@@unique([userId, courseId])` on
+   * IssuedCertificate: the loser of a race gets P2002 and is handed the
+   * winner's certificate, and because the score bump shares the transaction
+   * it rolls back with the failed insert — so the +50 can never be awarded
+   * twice, whatever the interleaving.
+   */
   private async issueCertificate(userId: string, courseId: string, courseTitle: string) {
     const certificateUuid = randomUUID();
     const user = await this.prisma.user.findUniqueOrThrow({
@@ -78,29 +109,57 @@ export class CertificateService {
       'application/pdf',
     );
 
-    return this.prisma.issuedCertificate.create({
-      data: { userId, courseId, certificateUuid, downloadUrl },
-    });
-  }
+    try {
+      return await this.prisma.$transaction(
+        async (tx) => {
+          // The unique constraint below is what actually enforces this; the
+          // read just avoids a pointless constraint violation in the common case.
+          const raced = await tx.issuedCertificate.findFirst({ where: { userId, courseId } });
+          if (raced) return raced;
 
-  /**
-   * +50 K-SCORE reward for upskilling. Note: ScoreEngine.recalculate() fully
-   * recomputes financialHealthScore from escrow/rating/response-time signals
-   * whenever a project completes — this bonus is additive and transient,
-   * it will be superseded by the next recalculation rather than
-   * permanently baked in. That's an acceptable trade for a "nice to have"
-   * reward signal, but worth knowing if K-SCORE ever looks like it "lost"
-   * a certification bonus.
-   */
-  private async bumpProviderScore(userId: string): Promise<void> {
-    const existing = await this.prisma.providerScore.findUnique({ where: { providerId: userId } });
-    const newScore = Math.min(MAX_FINANCIAL_HEALTH_SCORE, (existing?.financialHealthScore ?? 500) + CERTIFICATION_SCORE_BONUS);
+          const certificate = await tx.issuedCertificate.create({
+            data: { userId, courseId, certificateUuid, downloadUrl },
+          });
 
-    await this.prisma.providerScore.upsert({
-      where: { providerId: userId },
-      update: { financialHealthScore: newScore },
-      create: { providerId: userId, financialHealthScore: newScore },
-    });
+          // One-time +50 K-SCORE reward for upskilling. Note:
+          // ScoreEngine.recalculate() fully recomputes financialHealthScore
+          // from escrow/rating/response-time signals whenever a project
+          // completes — this bonus is additive and transient, superseded by
+          // the next recalculation rather than permanently baked in.
+          const existingScore = await tx.providerScore.findUnique({ where: { providerId: userId } });
+          const newScore = Math.min(
+            MAX_FINANCIAL_HEALTH_SCORE,
+            (existingScore?.financialHealthScore ?? 500) + CERTIFICATION_SCORE_BONUS,
+          );
+          await tx.providerScore.upsert({
+            where: { providerId: userId },
+            update: { financialHealthScore: newScore },
+            create: { providerId: userId, financialHealthScore: newScore },
+          });
+
+          return certificate;
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+    } catch (err) {
+      const isDuplicate =
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        (err.code === 'P2002' || err.code === 'P2034'); // unique violation / serialization failure
+      if (!isDuplicate) throw err;
+
+      // The concurrent submission won — its certificate (and its single +50)
+      // stand; this transaction, score bump included, rolled back.
+      const alreadyIssued = await this.prisma.issuedCertificate.findFirst({
+        where: { userId, courseId },
+      });
+      if (!alreadyIssued) throw err;
+
+      this.logger.warn(
+        `Concurrent certificate issuance for user ${userId}/course ${courseId} resolved to ` +
+          `${alreadyIssued.id} (${err.code})`,
+      );
+      return alreadyIssued;
+    }
   }
 
   private renderCertificatePdf(learnerName: string, courseTitle: string, certificateUuid: string): Promise<Buffer> {

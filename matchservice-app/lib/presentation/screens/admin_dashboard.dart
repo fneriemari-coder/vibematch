@@ -279,7 +279,7 @@ class _RevenueBarChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bars = [
-      _Bar('Escrow*', breakdown.escrowNominal, const Color(0xFF6366F1)),
+      _Bar('Escrow', breakdown.escrow, const Color(0xFF6366F1)),
       _Bar('Antecip.', breakdown.advance, const Color(0xFF06B6D4)),
       _Bar('BNPL', breakdown.bnpl, const Color(0xFFF59E0B)),
       _Bar('Manut.', breakdown.maintenance, const Color(0xFF10B981)),

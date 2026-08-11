@@ -29,7 +29,7 @@ class CurrencyAmounts {
 
 class RevenueBreakdown {
   const RevenueBreakdown({
-    required this.escrowNominal,
+    required this.escrow,
     required this.advance,
     required this.bnpl,
     required this.maintenance,
@@ -37,7 +37,11 @@ class RevenueBreakdown {
     required this.total,
   });
 
-  final double escrowNominal;
+  /// The platform's real cut of completed contracts, summed from the
+  /// ESCROW_RELEASE ledger rows. It used to be an estimate of completed GMV
+  /// times a nominal rate, which overstated exactly the projects that had
+  /// already paid out through an advance or BNPL.
+  final double escrow;
   final double advance;
   final double bnpl;
   final double maintenance;
@@ -46,7 +50,7 @@ class RevenueBreakdown {
 
   factory RevenueBreakdown.fromJson(Map<String, dynamic> json) =>
       RevenueBreakdown(
-        escrowNominal: (json['escrowNominal'] as num?)?.toDouble() ?? 0,
+        escrow: (json['escrow'] as num?)?.toDouble() ?? 0,
         advance: (json['advance'] as num?)?.toDouble() ?? 0,
         bnpl: (json['bnpl'] as num?)?.toDouble() ?? 0,
         maintenance: (json['maintenance'] as num?)?.toDouble() ?? 0,

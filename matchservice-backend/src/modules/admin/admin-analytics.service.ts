@@ -36,7 +36,6 @@ const DEFAULT_SUBSCRIPTION_PRICE: Record<Currency, number> = { USD: 49, BRL: 149
 @Injectable()
 export class AdminAnalyticsService {
   private readonly subscriptionPrice: Record<Currency, number>;
-  private readonly escrowNominalTakeRate: number;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -46,10 +45,6 @@ export class AdminAnalyticsService {
       USD: Number(this.config.get('SUBSCRIPTION_PRICE_USD') ?? DEFAULT_SUBSCRIPTION_PRICE.USD),
       BRL: Number(this.config.get('SUBSCRIPTION_PRICE_BRL') ?? DEFAULT_SUBSCRIPTION_PRICE.BRL),
     };
-    // NOMINAL — EscrowService never actually deducts a completion fee today;
-    // this rate is applied only for this report, to answer "what would our
-    // take have been if we charged one." See getPlatformNetRevenue().
-    this.escrowNominalTakeRate = Number(this.config.get('PLATFORM_ESCROW_TAKE_RATE') ?? '0.03');
   }
 
   async getDashboardMetrics(period: MetricsPeriod = '30d') {
@@ -107,40 +102,48 @@ export class AdminAnalyticsService {
 
   /**
    * Sums four take-rate streams by currency:
-   *   - Escrow: NOMINAL 3% of completed GMV (no real fee is charged today — see class doc)
+   *   - Escrow: REAL platform share, from ESCROW_RELEASE metadata.platformShare
    *   - Receivables advance: REAL fee amount, from WalletTransaction.metadata.fee
    *   - BNPL funding: REAL risk fee, from metadata.riskFee
    *   - Maintenance + Course revenue: REAL platform share, from metadata.platformShare
    */
   private async getPlatformNetRevenue(since: Date) {
-    const [completedGmvRows, feeTransactions] = await Promise.all([
-      this.prisma.escrowProject.groupBy({
-        by: ['currency'],
-        where: { status: EscrowStatus.COMPLETED, completedAt: { gte: since } },
-        _sum: { budget: true },
-      }),
-      this.prisma.walletTransaction.findMany({
-        where: {
-          type: { in: [WalletTransactionType.ADVANCE, WalletTransactionType.BNPL_FUNDING, WalletTransactionType.MAINTENANCE_REVENUE, WalletTransactionType.COURSE_REVENUE] },
-          createdAt: { gte: since },
+    // Escrow used to be estimated as `completed GMV × rate`, which is now
+    // wrong in two directions. EscrowService.complete() charges a real fee and
+    // records the platform's cut on the ESCROW_RELEASE row, and it nets off
+    // anything already paid out for the project (an advanced or BNPL-funded
+    // project releases only the top-up, or nothing). Multiplying full budgets
+    // therefore overstated revenue for exactly the projects that earned the
+    // most fees elsewhere. Read the ledger instead, the same way every other
+    // line here already does.
+    const feeTransactions = await this.prisma.walletTransaction.findMany({
+      where: {
+        type: {
+          in: [
+            WalletTransactionType.ESCROW_RELEASE,
+            WalletTransactionType.ADVANCE,
+            WalletTransactionType.BNPL_FUNDING,
+            WalletTransactionType.MAINTENANCE_REVENUE,
+            WalletTransactionType.COURSE_REVENUE,
+          ],
         },
-        select: { type: true, currency: true, metadata: true },
-      }),
-    ]);
+        createdAt: { gte: since },
+      },
+      select: { type: true, currency: true, metadata: true },
+    });
 
-    const revenue: Record<Currency, { escrowNominal: number; advance: number; bnpl: number; maintenance: number; course: number; total: number }> = {
-      USD: { escrowNominal: 0, advance: 0, bnpl: 0, maintenance: 0, course: 0, total: 0 },
-      BRL: { escrowNominal: 0, advance: 0, bnpl: 0, maintenance: 0, course: 0, total: 0 },
+    const revenue: Record<Currency, { escrow: number; advance: number; bnpl: number; maintenance: number; course: number; total: number }> = {
+      USD: { escrow: 0, advance: 0, bnpl: 0, maintenance: 0, course: 0, total: 0 },
+      BRL: { escrow: 0, advance: 0, bnpl: 0, maintenance: 0, course: 0, total: 0 },
     };
-
-    for (const row of completedGmvRows) {
-      revenue[row.currency].escrowNominal = Number(row._sum.budget ?? 0) * this.escrowNominalTakeRate;
-    }
 
     for (const tx of feeTransactions) {
       const metadata = (tx.metadata ?? {}) as Record<string, unknown>;
       const bucket = revenue[tx.currency];
       switch (tx.type) {
+        case WalletTransactionType.ESCROW_RELEASE:
+          bucket.escrow += Number(metadata.platformShare ?? 0);
+          break;
         case WalletTransactionType.ADVANCE:
           bucket.advance += Number(metadata.fee ?? 0);
           break;
@@ -158,7 +161,7 @@ export class AdminAnalyticsService {
 
     for (const currency of CURRENCIES) {
       const b = revenue[currency];
-      b.total = b.escrowNominal + b.advance + b.bnpl + b.maintenance + b.course;
+      b.total = b.escrow + b.advance + b.bnpl + b.maintenance + b.course;
     }
 
     return revenue;

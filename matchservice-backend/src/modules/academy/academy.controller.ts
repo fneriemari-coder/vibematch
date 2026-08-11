@@ -62,9 +62,10 @@ export class AcademyController {
     return this.aiFactoryService.generateCourse(user.id, dto);
   }
 
+  /** Instructor-only — see QuizGeneratorService.generateQuiz. */
   @Post('generate-quiz/:courseId')
-  generateQuiz(@Param('courseId') courseId: string) {
-    return this.quizGeneratorService.generateQuiz(courseId);
+  generateQuiz(@CurrentUser() user: AuthenticatedUser, @Param('courseId') courseId: string) {
+    return this.quizGeneratorService.generateQuiz(user.id, courseId);
   }
 
   /** Grades the attempt; on >=70% issues a certificate PDF + K-SCORE bonus. */

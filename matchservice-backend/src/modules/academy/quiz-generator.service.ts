@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LazyOpenAI } from '../../common/ai/lazy-openai';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -51,12 +51,22 @@ export class QuizGeneratorService {
     this.model = this.config.get('OPENAI_INTENT_MODEL') ?? 'gpt-4o-mini';
   }
 
-  async generateQuiz(courseId: string) {
+  /**
+   * Regenerates a course's exam. Restricted to the course's own instructor:
+   * the route had no authorization at all, so any authenticated user could
+   * regenerate any course's quiz — burning OpenAI spend on someone else's
+   * course and silently replacing the exam other people's students are
+   * sitting (the upsert overwrites `questionsJson` in place).
+   */
+  async generateQuiz(requesterId: string, courseId: string) {
     const course = await this.prisma.businessCourse.findUnique({
       where: { id: courseId },
       include: { modules: { orderBy: { orderIndex: 'asc' } } },
     });
     if (!course) throw new NotFoundException('Course not found');
+    if (course.instructorId !== requesterId) {
+      throw new ForbiddenException('Only the course instructor can generate this course\'s quiz');
+    }
 
     const lessonText = course.modules.length
       ? course.modules.map((m) => `## ${m.title}\n${m.voiceScript}`).join('\n\n')

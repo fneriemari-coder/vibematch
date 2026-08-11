@@ -1,7 +1,14 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
-import { InstallmentStatus, Prisma, SubscriptionStatus, SubscriptionTier, WalletTransactionType } from '@prisma/client';
+import {
+  EscrowStatus,
+  InstallmentStatus,
+  Prisma,
+  SubscriptionStatus,
+  SubscriptionTier,
+  WalletTransactionType,
+} from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AcademyService } from '../academy/academy.service';
 import { MastermindService } from '../mastermind/mastermind.service';
@@ -55,6 +62,52 @@ export class StripeWebhookService {
       throw new BadRequestException('Invalid Stripe webhook signature');
     }
 
+    // Event-level replay guard. Stripe retries aggressively and re-delivers on
+    // its own schedule; before this, a replayed `invoice.paid` wrote a second
+    // revenue row, incremented a wallet again and fired ANOTHER real Transfer.
+    // Claiming the event id up front means only one delivery ever reaches the
+    // handlers, and the primary key does the arbitration even under concurrent
+    // duplicate deliveries.
+    //
+    // The read is only a fast path to keep the common replay quiet (Prisma
+    // logs every constraint violation at error level); the primary key on the
+    // create below is the actual arbiter, including for concurrent deliveries
+    // that both get past this read.
+    const seen = await this.prisma.processedStripeEvent.findUnique({ where: { id: event.id } });
+    if (seen) {
+      this.logger.log(
+        `Stripe event ${event.id} (${event.type}) already processed at ${seen.processedAt.toISOString()} — ignoring replay`,
+      );
+      return { received: true, duplicate: true };
+    }
+
+    try {
+      await this.prisma.processedStripeEvent.create({
+        data: { id: event.id, type: event.type },
+      });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        this.logger.log(`Stripe event ${event.id} (${event.type}) already processed — ignoring replay`);
+        return { received: true, duplicate: true };
+      }
+      throw err;
+    }
+
+    try {
+      await this.dispatch(event);
+    } catch (err) {
+      // Release the claim so Stripe's own retry can genuinely re-run this
+      // event — a half-processed event that stayed "claimed" would be lost.
+      await this.prisma.processedStripeEvent
+        .delete({ where: { id: event.id } })
+        .catch(() => undefined);
+      throw err;
+    }
+
+    return { received: true };
+  }
+
+  private async dispatch(event: Stripe.Event): Promise<void> {
     switch (event.type) {
       case 'invoice.paid':
         await this.handleInvoicePaid(event.data.object as Stripe.Invoice);
@@ -65,8 +118,22 @@ export class StripeWebhookService {
       case 'identity.verification_session.verified':
         await this.handleIdentityVerified(event.data.object as Stripe.Identity.VerificationSession);
         break;
+      // Pix and boleto settle asynchronously: Stripe fires
+      // `checkout.session.completed` immediately with
+      // `payment_status: 'unpaid'`, and only later
+      // `checkout.session.async_payment_succeeded` once the money actually
+      // arrives. Without the second case EVERY Pix/boleto payment in Brazil
+      // was silently dropped — the customer paid and nothing happened. Both
+      // route to the same handler; the `payment_status === 'paid'` check
+      // inside it is what distinguishes them.
       case 'checkout.session.completed':
+      case 'checkout.session.async_payment_succeeded':
         await this.handleCheckoutSessionCompleted(event.data.object as Stripe.Checkout.Session);
+        break;
+      case 'checkout.session.async_payment_failed':
+        await this.handleCheckoutSessionAsyncPaymentFailed(
+          event.data.object as Stripe.Checkout.Session,
+        );
         break;
       case 'account.updated':
         await this.connectService.syncAccountStatus(event.data.object as Stripe.Account);
@@ -74,8 +141,6 @@ export class StripeWebhookService {
       default:
         this.logger.debug(`Ignoring unhandled Stripe event type: ${event.type}`);
     }
-
-    return { received: true };
   }
 
   private async handleInvoicePaid(invoice: Stripe.Invoice) {
@@ -119,10 +184,20 @@ export class StripeWebhookService {
       return;
     }
 
-    const currentExpiry = subscription.expiresAt && subscription.expiresAt > new Date()
-      ? subscription.expiresAt
-      : new Date();
-    const newExpiry = new Date(currentExpiry.getTime() + 30 * 24 * 60 * 60 * 1000);
+    // ABSOLUTE, not incremental. This used to be `currentExpiry + 30 days`,
+    // so every replay of the same `invoice.paid` event handed the subscriber
+    // another free month. Stripe tells us exactly which period was paid for —
+    // deriving the expiry from the invoice's own billing period makes the
+    // handler naturally idempotent: replaying it computes the same instant
+    // and writes the same value.
+    //
+    // The `Date.now() + 30d` fallback is only for invoices with no period
+    // (shouldn't happen for subscription invoices); it is absolute too, so a
+    // replay still can't stack months.
+    const periodEnd = invoice.lines.data[0]?.period?.end ?? invoice.period_end;
+    const newExpiry = periodEnd
+      ? new Date(periodEnd * 1000)
+      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
     await this.prisma.subscription.update({
       where: { id: subscription.id },
@@ -201,6 +276,27 @@ export class StripeWebhookService {
     const agreement = await this.prisma.maintenanceAgreement.findUnique({ where: { id: agreementId } });
     if (!agreement) return;
 
+    // Idempotency guard. This handler had none: a replayed `invoice.paid`
+    // wrote a SECOND revenue row, incremented the wallet again AND fired
+    // another real Stripe Transfer. There is no ProcessedStripeEvent table to
+    // dedupe on (adding one is the recommended follow-up), so the ledger row
+    // this handler itself writes — which already carries `invoiceId` in its
+    // metadata — is used as the marker.
+    const alreadyCredited = await this.prisma.walletTransaction.findFirst({
+      where: {
+        userId: agreement.providerId,
+        type: WalletTransactionType.MAINTENANCE_REVENUE,
+        metadata: { path: ['invoiceId'], equals: invoice.id },
+      },
+      select: { id: true },
+    });
+    if (alreadyCredited) {
+      this.logger.debug(
+        `Maintenance invoice ${invoice.id} already credited (wallet transaction ${alreadyCredited.id}) — ignoring replay`,
+      );
+      return;
+    }
+
     const amountPaid = invoice.amount_paid / 100;
     const providerShare = Number((amountPaid * (1 - agreement.platformTakeRate)).toFixed(2));
     const platformShare = Number((amountPaid - providerShare).toFixed(2));
@@ -257,27 +353,152 @@ export class StripeWebhookService {
    * `invoice.paid`, and they carry no session metadata to route on.
    */
   private async handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
+    const kind = session.metadata?.kind;
+
     if (session.mode === 'subscription') {
-      if (session.metadata?.kind === 'community_membership') {
+      if (kind === 'community_membership') {
         await this.communitiesService.completeMembership(session);
+        return;
       }
+      this.logger.warn(
+        `Dropping subscription Checkout Session ${session.id}: unrecognized metadata.kind ` +
+          `${kind ?? '(none)'} — no handler claims it, nothing was granted`,
+      );
       return;
     }
 
-    if (session.mode !== 'payment') return;
-    if (session.payment_status !== 'paid') return;
+    if (session.mode !== 'payment') {
+      this.logger.warn(
+        `Dropping Checkout Session ${session.id}: unsupported mode ${session.mode ?? '(none)'} ` +
+          `(kind ${kind ?? '(none)'})`,
+      );
+      return;
+    }
 
-    if (session.metadata?.kind === 'course_purchase') {
+    if (session.payment_status !== 'paid') {
+      // Expected for Pix/boleto on the SYNCHRONOUS `checkout.session.completed`
+      // event — `checkout.session.async_payment_succeeded` will follow when the
+      // money lands and re-enter this handler. Logged rather than dropped in
+      // silence so an async payment that never settles is visible.
+      this.logger.warn(
+        `Checkout Session ${session.id} (kind ${kind ?? '(none)'}) not fulfilled yet: ` +
+          `payment_status=${session.payment_status} — awaiting ` +
+          'checkout.session.async_payment_succeeded (Pix/boleto) or expiry',
+      );
+      return;
+    }
+
+    if (kind === 'course_purchase') {
       await this.academyService.completePurchase(session);
       return;
     }
 
-    if (session.metadata?.kind === 'mastermind_booking') {
+    if (kind === 'mastermind_booking') {
       await this.mastermindService.completeBooking(session);
       return;
     }
 
-    this.logger.debug(`Ignoring checkout.session.completed with unrecognized kind: ${session.metadata?.kind}`);
+    if (kind === 'escrow_funding') {
+      await this.handleEscrowFundingPaid(session);
+      return;
+    }
+
+    this.logger.warn(
+      `Dropping paid Checkout Session ${session.id}: unrecognized metadata.kind ${kind ?? '(none)'} — ` +
+        'money was taken and no handler claims it',
+    );
+  }
+
+  /**
+   * The ONLY place an EscrowProject becomes FUNDED through the client-funding
+   * path. `EscrowService.fund()` opens a Checkout Session and returns its URL;
+   * it no longer flips the status itself, so no money-free funding is possible.
+   *
+   * Idempotent by construction: the conditional `updateMany` only matches a
+   * project still in PENDING, so a replayed event (or the
+   * completed/async_payment_succeeded pair for the same session) matches zero
+   * rows and returns early without a second write. The DEPOSIT ledger row is
+   * likewise guarded on the session id.
+   */
+  private async handleEscrowFundingPaid(session: Stripe.Checkout.Session): Promise<void> {
+    const { escrowProjectId, clientId } = session.metadata ?? {};
+    if (!escrowProjectId || !clientId) {
+      this.logger.warn(
+        `checkout.session.completed for escrow funding missing metadata (session ${session.id})`,
+      );
+      return;
+    }
+
+    const project = await this.prisma.escrowProject.findUnique({ where: { id: escrowProjectId } });
+    if (!project) {
+      this.logger.error(
+        `Escrow funding paid for unknown project ${escrowProjectId} (session ${session.id})`,
+      );
+      return;
+    }
+    if (project.status !== EscrowStatus.PENDING) {
+      this.logger.debug(
+        `Escrow ${escrowProjectId} already in status ${project.status} — ignoring duplicate funding webhook (session ${session.id})`,
+      );
+      return;
+    }
+
+    const amountPaid = (session.amount_total ?? 0) / 100;
+    const paymentIntentId =
+      typeof session.payment_intent === 'string'
+        ? session.payment_intent
+        : (session.payment_intent?.id ?? null);
+
+    // Conditional update: only a project still PENDING matches, so a replayed
+    // event (or the completed / async_payment_succeeded pair for the same
+    // session) matches zero rows. The PaymentIntent is persisted here — this
+    // is what makes EscrowService.refund a lookup rather than a Stripe search.
+    const funded = await this.prisma.escrowProject.updateMany({
+      where: { id: escrowProjectId, status: EscrowStatus.PENDING },
+      data: { status: EscrowStatus.FUNDED, fundedAt: new Date(), stripePaymentIntentId: paymentIntentId },
+    });
+    if (funded.count === 0) {
+      this.logger.debug(
+        `Escrow ${escrowProjectId} was funded concurrently — ignoring duplicate webhook (session ${session.id})`,
+      );
+      return;
+    }
+
+    // The client's deposit, recorded as a negative (debit) ledger row against
+    // the project. `walletBalance` is intentionally NOT touched — the money
+    // came from a card/Pix, not from the client's in-app wallet. This is the
+    // audit trail for the charge, and a second place the PaymentIntent can be
+    // recovered from for projects funded before the column existed.
+    await this.prisma.walletTransaction.create({
+      data: {
+        userId: clientId,
+        type: WalletTransactionType.DEPOSIT,
+        amount: new Prisma.Decimal(-amountPaid),
+        currency: project.currency,
+        relatedEscrowId: escrowProjectId,
+        metadata: {
+          kind: 'escrow_funding',
+          checkoutSessionId: session.id,
+          paymentIntentId,
+          grossAmount: amountPaid,
+        },
+      },
+    });
+
+    this.logger.log(
+      `Escrow ${escrowProjectId} FUNDED by client ${clientId}: ${amountPaid} ${project.currency} ` +
+        `(session ${session.id}, payment intent ${paymentIntentId ?? 'unknown'})`,
+    );
+  }
+
+  /** Pix/boleto that never settled — the seat/project must stay unfunded. */
+  private async handleCheckoutSessionAsyncPaymentFailed(
+    session: Stripe.Checkout.Session,
+  ): Promise<void> {
+    this.logger.warn(
+      `Async payment FAILED for Checkout Session ${session.id} (kind ${session.metadata?.kind ?? '(none)'}, ` +
+        `payment_status=${session.payment_status}) — nothing granted, customer must retry`,
+    );
   }
 
   /**

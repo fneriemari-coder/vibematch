@@ -16,7 +16,7 @@ describe('StripeWebhookService — maintenance revenue split', () => {
           platformTakeRate: 0.15,
         }),
       },
-      walletTransaction: { create: jest.fn().mockResolvedValue({}) },
+      walletTransaction: { create: jest.fn().mockResolvedValue({}), findFirst: jest.fn().mockResolvedValue(null) },
       user: { update: jest.fn().mockResolvedValue({}) },
       $transaction: jest.fn((ops: Promise<any>[]) => Promise.all(ops)),
     };
@@ -61,7 +61,7 @@ describe('StripeWebhookService — maintenance revenue split', () => {
           platformTakeRate: 0.25,
         }),
       },
-      walletTransaction: { create: jest.fn().mockResolvedValue({}) },
+      walletTransaction: { create: jest.fn().mockResolvedValue({}), findFirst: jest.fn().mockResolvedValue(null) },
       user: { update: jest.fn().mockResolvedValue({}) },
       $transaction: jest.fn((ops: Promise<any>[]) => Promise.all(ops)),
     };

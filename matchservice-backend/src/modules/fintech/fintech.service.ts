@@ -104,35 +104,86 @@ export class FintechService {
   async withdraw(userId: string, amount: number) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
-    if (Number(user.walletBalance) < amount) {
-      throw new BadRequestException('Insufficient wallet balance');
-    }
 
     const currency = user.country === 'BR' ? Currency.BRL : Currency.USD;
     const isConnected = Boolean(user.stripeConnectAccountId && user.stripeConnectPayoutsEnabled);
+    const debit = new Prisma.Decimal(amount);
 
-    let stripePayoutId: string | null = null;
-    if (isConnected) {
-      const payout = await this.connectService.requestPayout(userId, amount, currency);
-      stripePayoutId = payout.id;
+    // STEP 1 — reserve the funds atomically.
+    //
+    // This used to be a `findUnique` sufficiency check followed by an
+    // UNCONDITIONAL `decrement`. Two withdrawals racing on the same wallet
+    // both read the same balance, both passed the check, and both
+    // decremented — driving `walletBalance` negative AFTER real Stripe
+    // payouts had already left the platform account. The guard now lives in
+    // the WHERE clause, so the database itself decides: exactly one of N
+    // concurrent requests can match `walletBalance >= amount` and the rest
+    // match zero rows.
+    const reserved = await this.prisma.user.updateMany({
+      where: { id: userId, walletBalance: { gte: debit } },
+      data: { walletBalance: { decrement: debit } },
+    });
+    if (reserved.count === 0) {
+      throw new BadRequestException('Insufficient wallet balance');
     }
 
-    const [, updatedUser] = await this.prisma.$transaction([
-      this.prisma.walletTransaction.create({
-        data: {
-          userId,
-          type: WalletTransactionType.WITHDRAWAL,
-          amount: new Prisma.Decimal(-amount),
-          currency,
-          metadata: stripePayoutId ? { stripePayoutId } : undefined,
-        },
-      }),
-      this.prisma.user.update({
-        where: { id: userId },
-        data: { walletBalance: { decrement: new Prisma.Decimal(amount) } },
-        select: { walletBalance: true },
-      }),
-    ]);
+    const ledgerEntry = await this.prisma.walletTransaction.create({
+      data: {
+        userId,
+        type: WalletTransactionType.WITHDRAWAL,
+        amount: new Prisma.Decimal(-amount),
+        currency,
+      },
+    });
+
+    // STEP 2 — only now attempt the real payout. Money never leaves before
+    // the balance backing it has been reserved.
+    let stripePayoutId: string | null = null;
+    if (isConnected) {
+      try {
+        const payout = await this.connectService.requestPayout(userId, amount, currency);
+        stripePayoutId = payout.id;
+        await this.prisma.walletTransaction.update({
+          where: { id: ledgerEntry.id },
+          data: { metadata: { stripePayoutId } },
+        });
+      } catch (err) {
+        // STEP 3 — compensate. The reservation already happened, so the
+        // ledger would otherwise be wrong (balance debited, no payout). Undo
+        // it with an explicit contra-entry rather than a silent rollback, so
+        // the reversal is visible in the transaction history.
+        const reason = (err as Error).message;
+        await this.prisma.$transaction([
+          this.prisma.user.update({
+            where: { id: userId },
+            data: { walletBalance: { increment: debit } },
+          }),
+          this.prisma.walletTransaction.create({
+            data: {
+              userId,
+              // No dedicated REVERSAL type in WalletTransactionType, so the
+              // returned funds are recorded as a DEPOSIT that points back at
+              // the failed withdrawal.
+              type: WalletTransactionType.DEPOSIT,
+              amount: new Prisma.Decimal(amount),
+              currency,
+              metadata: { kind: 'withdrawal_reversal', reversalOf: ledgerEntry.id, reason },
+            },
+          }),
+        ]);
+
+        this.logger.error(
+          `Payout failed for user ${userId} (${amount} ${currency}) — reserved balance released and ` +
+            `withdrawal ${ledgerEntry.id} reversed: ${reason}`,
+        );
+        throw err;
+      }
+    }
+
+    const updatedUser = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { walletBalance: true },
+    });
 
     this.logger.log(
       `Withdrawal of ${amount} ${currency} for user ${userId}` +
