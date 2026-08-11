@@ -1,6 +1,11 @@
 {
   "compilerOptions": {
     "module": "commonjs",
+    // Without an explicit rootDir, tsc infers the common root of every
+    // included file. prisma/seed.ts sits outside src/, so that root became
+    // the project dir and the emit was mirrored as dist/src/main.js — while
+    // package.json's start:prod and the Docker CMD both expect dist/main.js.
+    "rootDir": "./src",
     "declaration": true,
     "removeComments": true,
     "emitDecoratorMetadata": true,
@@ -23,5 +28,9 @@
       "@common/*": ["src/common/*"],
       "@modules/*": ["src/modules/*"]
     }
-  }
+  },
+  // Scoped to src/ so rootDir above holds. prisma/seed.ts is intentionally
+  // out: it's never compiled, only run through ts-node (npm run prisma:seed).
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
 }
