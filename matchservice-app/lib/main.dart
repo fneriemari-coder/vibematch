@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'core/api/dio_client.dart';
+import 'firebase_options.dart';
 import 'core/services/notification_service.dart';
 import 'core/theme/vibe_match_theme.dart';
 import 'data/repositories/academy_repository.dart';
@@ -29,14 +30,14 @@ final navigatorKey = GlobalKey<NavigatorState>();
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Firebase requires platform config files (google-services.json /
-  // GoogleService-Info.plist, or FirebaseOptions on web) to be dropped in
-  // before this succeeds — see matchservice-app/README.md. Until a real
-  // Firebase project is wired up, this throws on every platform; swallow it
-  // so the rest of the app (every screen not gated on push notifications)
-  // still boots instead of crashing at the splash screen.
+  // The web app is registered against the vibematch-42981 project; Android
+  // and iOS are not, and DefaultFirebaseOptions throws a directed error for
+  // them. Keep swallowing that — push is the only thing that depends on
+  // Firebase, and no screen should fail to boot because of it.
   try {
-    await Firebase.initializeApp();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
   } catch (e) {
     debugPrint(
       'Firebase.initializeApp() failed — push notifications disabled: $e',

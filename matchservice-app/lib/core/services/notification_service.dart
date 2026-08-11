@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../../data/repositories/auth_repository.dart';
+import '../../firebase_options.dart';
 
 /// Background message handler MUST be a top-level (or static) function —
 /// Firebase invokes it in a separate isolate when the app is fully killed.
@@ -60,8 +62,19 @@ class NotificationService {
   }
 
   Future<void> _registerToken() async {
+    // On web, getToken() without a VAPID key throws. Until the key pair is
+    // generated in the console and passed via --dart-define, skip the call
+    // rather than failing on every boot with an opaque error.
+    if (kIsWeb && firebaseVapidKey.isEmpty) {
+      debugPrint(
+        'FIREBASE_VAPID_KEY not set — web push token registration skipped.',
+      );
+      return;
+    }
     try {
-      final token = await FirebaseMessaging.instance.getToken();
+      final token = await FirebaseMessaging.instance.getToken(
+        vapidKey: kIsWeb ? firebaseVapidKey : null,
+      );
       if (token != null) {
         await _authRepository.updateFcmToken(token);
       }

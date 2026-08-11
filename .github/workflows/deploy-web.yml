@@ -39,11 +39,17 @@ jobs:
       # The API must keep this Pages origin in its CORS_ORIGIN allowlist
       # (https://fneriemari-coder.github.io), or the browser blocks every
       # request even though the API itself is healthy.
+      # FIREBASE_VAPID_KEY is the Web Push public key from
+      # Firebase console -> Cloud Messaging -> Certificados push da Web.
+      # It is a public key, so a repository *variable* is the right home for
+      # it — not a secret. While unset, the app skips web push token
+      # registration instead of failing on boot.
       - name: flutter build web
         run: >
           flutter build web --release
           --base-href /vibematch/
           --dart-define=API_BASE_URL=${{ vars.API_BASE_URL || 'https://vibematch-production-ea5b.up.railway.app' }}
+          --dart-define=FIREBASE_VAPID_KEY=${{ vars.FIREBASE_VAPID_KEY }}
 
       - uses: actions/upload-pages-artifact@v3
         with:
