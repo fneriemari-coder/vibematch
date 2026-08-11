@@ -25,18 +25,44 @@ export class PushNotificationService implements OnModuleInit {
     private readonly config: ConfigService,
   ) {}
 
+  /** Reported by GET /health so the deployment can be checked without log access. */
+  get isEnabled(): boolean {
+    return this.enabled;
+  }
+
   onModuleInit() {
-    const serviceAccountJson = this.config.get<string>('FIREBASE_SERVICE_ACCOUNT_JSON');
-    if (!serviceAccountJson) {
-      this.logger.warn('FIREBASE_SERVICE_ACCOUNT_JSON not set — push notifications disabled');
+    // Two accepted forms. FIREBASE_SERVICE_ACCOUNT_B64 exists because the raw
+    // JSON is multi-line and several hosting dashboards (Railway among them)
+    // treat a pasted multi-line value as a dotenv block of many variables —
+    // which silently replaces the rest of the environment, taking DATABASE_URL
+    // with it. A single-line base64 blob cannot be misread that way.
+    const base64 = this.config.get<string>('FIREBASE_SERVICE_ACCOUNT_B64');
+    const raw = base64
+      ? Buffer.from(base64, 'base64').toString('utf8')
+      : this.config.get<string>('FIREBASE_SERVICE_ACCOUNT_JSON');
+
+    if (!raw) {
+      this.logger.warn(
+        'FIREBASE_SERVICE_ACCOUNT_JSON / _B64 not set — push notifications disabled',
+      );
       return;
     }
-    if (admin.apps.length === 0) {
-      admin.initializeApp({
-        credential: admin.credential.cert(JSON.parse(serviceAccountJson)),
-      });
+
+    // A malformed credential must not take the whole API down: push is
+    // optional, everything else on this deployment is not.
+    try {
+      if (admin.apps.length === 0) {
+        admin.initializeApp({ credential: admin.credential.cert(JSON.parse(raw)) });
+      }
+      this.enabled = true;
+      this.logger.log('Firebase Admin initialised — push notifications enabled');
+    } catch (err) {
+      this.logger.error(
+        `Firebase service account could not be parsed — push notifications disabled: ${
+          (err as Error).message
+        }`,
+      );
     }
-    this.enabled = true;
   }
 
   /**
