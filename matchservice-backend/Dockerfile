@@ -25,6 +25,12 @@ COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build
 
+# Compiled separately from the app: prisma/seed.ts sits outside src/ (and so
+# outside the app tsconfig), and ts-node is a devDependency that never reaches
+# the runtime image. This produces a plain JS artifact so the seed can be run
+# on demand from the platform's shell — `npm run seed:prod`.
+RUN npm run build:seed
+
 # --- Stage 2: production runtime -------------------------------------------
 FROM node:20-slim AS runner
 WORKDIR /app
@@ -41,6 +47,7 @@ COPY prisma ./prisma
 RUN npm ci --omit=dev && npx prisma generate
 
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/dist-seed ./dist-seed
 
 EXPOSE 3000
 # Applies pending migrations before every boot — the container has real

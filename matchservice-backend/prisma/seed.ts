@@ -173,10 +173,17 @@ const POSTS: SeedPost[] = [
 async function main() {
   console.log('Seeding MatchService launch-week Discovery Feed content...');
 
-  // Clean slate — avoids duplicate posts/tags on repeated `prisma db seed` runs.
-  await prisma.postTag.deleteMany({});
+  // Clean slate — avoids duplicate posts/tags on repeated `prisma db seed`
+  // runs. Both deletes are scoped to the seed creators' own posts: an
+  // unscoped postTag.deleteMany({}) would strip the tags off posts written
+  // by real users, which matters the moment this is run against a database
+  // that isn't empty.
+  const seedEmails = CREATORS.map((c) => c.email);
+  await prisma.postTag.deleteMany({
+    where: { post: { user: { email: { in: seedEmails } } } },
+  });
   await prisma.discoveryPost.deleteMany({
-    where: { user: { email: { in: CREATORS.map((c) => c.email) } } },
+    where: { user: { email: { in: seedEmails } } },
   });
 
   const creatorIds = new Map<string, string>();

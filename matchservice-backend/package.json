@@ -1,7 +1,7 @@
 {
   "name": "matchservice-backend",
   "version": "0.1.0",
-  "description": "MatchService — dual opt-in services marketplace (Cloud/Local/B2B) with escrow, fintech and SaaS Pro tooling.",
+  "description": "MatchService \u2014 dual opt-in services marketplace (Cloud/Local/B2B) with escrow, fintech and SaaS Pro tooling.",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
@@ -15,7 +15,9 @@
     "prisma:seed": "ts-node prisma/seed.ts",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
-    "test:moderation": "ts-node src/modules/ai/tests/moderation-stress-test.ts"
+    "test:moderation": "ts-node src/modules/ai/tests/moderation-stress-test.ts",
+    "build:seed": "tsc prisma/seed.ts --outDir dist-seed --module commonjs --target ES2021 --esModuleInterop --skipLibCheck --resolveJsonModule",
+    "seed:prod": "node dist-seed/seed.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1106.0",
