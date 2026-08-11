@@ -26,4 +26,10 @@ RUN npm ci --omit=dev && npx prisma generate
 COPY --from=builder /app/dist ./dist
 
 EXPOSE 3000
-CMD ["node", "dist/main.js"]
+# Applies pending migrations before every boot — the container has real
+# network access to the database (unlike the dev sandbox this was built in),
+# so this is what actually keeps schema in sync on Railway/Render/etc.
+# Single-instance deploys only: with N replicas booting in parallel this
+# races (each runs `migrate deploy` concurrently) — fine for this project's
+# scale, revisit with a dedicated release-phase step if that ever changes.
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
