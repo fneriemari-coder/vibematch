@@ -10,12 +10,12 @@ import { S3StorageService } from '../../common/storage/s3-storage.service';
 import { GenerateAiCourseDto } from './dto/generate-ai-course.dto';
 import { COURSE_GENERATED_EVENT, CourseGeneratedEvent } from '../ai/events/course-generated.event';
 
-interface GeneratedModule {
+export interface GeneratedModule {
   title: string;
   voiceScript: string;
 }
 
-interface GeneratedCourseScope {
+export interface GeneratedCourseScope {
   courseTitle: string;
   commercialDescription: string;
   // Market-standard SCREAMING_SNAKE_CASE skill/error tags this course
@@ -71,6 +71,21 @@ const DEFAULT_PRICE_USD = 297;
 const DEFAULT_PRICE_BRL = 997;
 
 /**
+ * Marker tag stamped onto every course this factory publishes, so the client
+ * can badge it as "gerado por IA".
+ *
+ * `BusinessCourse` has no boolean for provenance, and `skillsTaught` is the
+ * only client-visible, queryable string list on the model. Carrying the flag
+ * here is harmless to the two consumers of that array
+ * (GET /academy/course-connections/:courseId matches it against
+ * `UserProfile.skills` / `PostTag.tagName`, and no profile or post ever
+ * carries this tag), and it avoids polluting the course title. A dedicated
+ * `isAiGenerated Boolean @default(false)` column would be the right home —
+ * see the note in this module's README-level report.
+ */
+export const AI_GENERATED_COURSE_TAG = 'AI_GENERATED';
+
+/**
  * "AiCourseFactoryService" — generates a complete 3-module executive course
  * (scope + voice scripts), simulates rendering each lesson to video, and
  * produces a real downloadable PDF support pack.
@@ -99,11 +114,31 @@ export class AiFactoryService {
   }
 
   async generateCourse(instructorId: string, dto: GenerateAiCourseDto) {
-    const instructor = await this.prisma.user.findUniqueOrThrow({ where: { id: instructorId } });
     const scope = await this.generateScope(dto.topicHint);
+    return this.publishCourseFromScope(instructorId, scope);
+  }
+
+  /**
+   * Persists an already-composed course scope: the BusinessCourse row, its
+   * ordered modules (with simulated lesson videos) and the real PDF material
+   * pack, then fires COURSE_GENERATED.
+   *
+   * Split out of `generateCourse` so a caller that produced the scope some
+   * other way can reuse the whole publishing pipeline — specifically
+   * `prisma/seed-ai-courses.ts`, which falls back to a deterministic local
+   * composer when OPENAI_API_KEY is absent or the model call fails, and must
+   * still end up with courses that are indistinguishable in shape from
+   * model-generated ones.
+   */
+  async publishCourseFromScope(instructorId: string, scope: GeneratedCourseScope) {
+    const instructor = await this.prisma.user.findUniqueOrThrow({ where: { id: instructorId } });
 
     const currency = instructor.country === 'BR' ? Currency.BRL : Currency.USD;
     const price = currency === Currency.BRL ? DEFAULT_PRICE_BRL : DEFAULT_PRICE_USD;
+
+    // De-duplicated so re-publishing a scope that already names the marker
+    // (e.g. one round-tripped through the model) can't stack it twice.
+    const skillsTaught = [...new Set([...scope.skillsTaught, AI_GENERATED_COURSE_TAG])];
 
     const course = await this.prisma.businessCourse.create({
       data: {
@@ -112,7 +147,7 @@ export class AiFactoryService {
         description: scope.commercialDescription,
         price,
         currency,
-        skillsTaught: scope.skillsTaught,
+        skillsTaught,
       },
     });
 
@@ -132,7 +167,19 @@ export class AiFactoryService {
       modules.push(created);
     }
 
-    const materialDownloadUrl = await this.generateMaterialPdf(course.id, scope, modules);
+    // The course and its modules are already committed at this point, so an
+    // unconfigured (or momentarily unavailable) object store must not take the
+    // whole generation down — that would leave a perfectly usable course behind
+    // an error response. The PDF is an attachment, not the product.
+    let materialDownloadUrl: string | null = null;
+    try {
+      materialDownloadUrl = await this.generateMaterialPdf(course.id, scope, modules);
+    } catch (error) {
+      this.logger.warn(
+        `Course ${course.id} published without its PDF material pack: ${error instanceof Error ? error.message : error}`,
+      );
+    }
+
     const updatedCourse = await this.prisma.businessCourse.update({
       where: { id: course.id },
       data: { materialDownloadUrl },

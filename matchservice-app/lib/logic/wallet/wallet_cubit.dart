@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../core/utils/api_error.dart';
 import '../../data/models/wallet_models.dart';
 import '../../data/repositories/wallet_repository.dart';
 
@@ -57,6 +58,28 @@ class WalletCubit extends Cubit<WalletState> {
 
   final WalletRepository _repository;
 
+  /// The dashboard as it stood before a failed action, so the error frame can
+  /// be dismissed without refetching everything.
+  WalletLoaded? _lastLoaded;
+
+  /// Drops a `WalletError` and restores the dashboard behind it.
+  ///
+  /// The action failures below used to emit `WalletError` and then immediately
+  /// re-emit the previous state in the same synchronous block, so no
+  /// `BlocBuilder` could ever render the error frame — a rejected withdrawal
+  /// looked like a no-op. The error state now persists, and the screen calls
+  /// this once it has shown the message.
+  ///
+  /// A failed *initial* load has no dashboard to go back to, so the error is
+  /// left in place: that one is a whole-screen failure with a retry, not a
+  /// dismissible notice.
+  void clearError() {
+    if (state is! WalletError) return;
+    final previous = _lastLoaded;
+    if (previous == null) return;
+    emit(previous);
+  }
+
   Future<void> load({
     required double initialBalance,
     required String currency,
@@ -76,17 +99,20 @@ class WalletCubit extends Cubit<WalletState> {
       // still the source of truth; this is just a UI-facing estimate).
       final bnplCreditLimit = (kScore / 1000) * 20000;
 
-      emit(
-        WalletLoaded(
-          balance: initialBalance,
-          currency: currency,
-          kScore: kScore,
-          bnplCreditLimit: bnplCreditLimit,
-          timeline: timeline,
-        ),
+      final loaded = WalletLoaded(
+        balance: initialBalance,
+        currency: currency,
+        kScore: kScore,
+        bnplCreditLimit: bnplCreditLimit,
+        timeline: timeline,
       );
+      _lastLoaded = loaded;
+      emit(loaded);
     } catch (e) {
-      emit(WalletError(e.toString()));
+      _lastLoaded = null;
+      emit(WalletError(describeApiError(e,
+          fallback: 'Não foi possível '
+              'carregar a carteira.')));
     }
   }
 
@@ -98,11 +124,24 @@ class WalletCubit extends Cubit<WalletState> {
       final result = await _repository.advance(escrowId);
       final newBalance =
           double.tryParse('${result['walletBalance']}') ?? current.balance;
-      emit(current.copyWith(balance: newBalance, actionPending: false));
+      final settled = current.copyWith(
+        balance: newBalance,
+        actionPending: false,
+      );
+      _lastLoaded = settled;
+      emit(settled);
     } catch (e) {
-      emit(current.copyWith(actionPending: false));
-      emit(WalletError(e.toString()));
-      emit(current);
+      // The error is the last state emitted, so the UI actually gets to render
+      // it; `clearError()` puts this dashboard back afterwards.
+      _lastLoaded = current.copyWith(actionPending: false);
+      emit(
+        WalletError(
+          describeApiError(
+            e,
+            fallback: 'Não foi possível antecipar este recebível.',
+          ),
+        ),
+      );
     }
   }
 
@@ -114,11 +153,22 @@ class WalletCubit extends Cubit<WalletState> {
       final result = await _repository.withdraw(amount);
       final newBalance = double.tryParse('${result['walletBalance']}') ??
           (current.balance - amount);
-      emit(current.copyWith(balance: newBalance, actionPending: false));
+      final settled = current.copyWith(
+        balance: newBalance,
+        actionPending: false,
+      );
+      _lastLoaded = settled;
+      emit(settled);
     } catch (e) {
-      emit(current.copyWith(actionPending: false));
-      emit(WalletError(e.toString()));
-      emit(current);
+      _lastLoaded = current.copyWith(actionPending: false);
+      emit(
+        WalletError(
+          describeApiError(
+            e,
+            fallback: 'Não foi possível concluir o saque.',
+          ),
+        ),
+      );
     }
   }
 }

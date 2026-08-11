@@ -1,4 +1,44 @@
-/// Models for GET /chat/matches — the conversations list.
+/// Models for GET /chat/matches — the conversations list — and for
+/// GET /chat/:matchId/messages, which is the room's history.
+
+/// One chat message.
+///
+/// The same shape arrives two ways: as a row of the fetched history and as the
+/// socket's `newMessage` payload (the gateway emits the created Prisma record
+/// verbatim). [id] is what lets the room merge the two without showing a
+/// message twice.
+class ChatMessage {
+  const ChatMessage({
+    required this.id,
+    required this.matchId,
+    required this.senderId,
+    required this.content,
+    required this.translatedContent,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String matchId;
+  final String senderId;
+  final String content;
+
+  /// The gateway machine-translates into the recipient's language; null when
+  /// both sides already share one.
+  final String? translatedContent;
+  final DateTime createdAt;
+
+  factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
+        id: json['id'] as String? ?? '',
+        matchId: json['matchId'] as String? ?? '',
+        senderId: json['senderId'] as String? ?? '',
+        content: json['content'] as String? ?? '',
+        translatedContent: json['translatedContent'] as String?,
+        // A socket payload serialises the date the same way the REST response
+        // does, but an unparseable value must not take the room down.
+        createdAt: DateTime.tryParse('${json['createdAt']}')?.toLocal() ??
+            DateTime.now(),
+      );
+}
 
 class Conversation {
   const Conversation({

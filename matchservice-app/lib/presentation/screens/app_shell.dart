@@ -5,12 +5,14 @@ import '../../core/theme/vibe_match_theme.dart';
 import '../../data/repositories/academy_repository.dart';
 import '../../data/repositories/chat_repository.dart';
 import '../../data/repositories/community_repository.dart';
+import '../../data/repositories/escrow_repository.dart';
 import '../../data/repositories/mastermind_repository.dart';
 import '../../data/models/feed_models.dart';
 import '../../logic/feed/feed_cubit.dart';
 import '../../logic/swipe/swipe_cubit.dart';
 import 'conversations_screen.dart';
 import 'courses_screen.dart';
+import 'deals_screen.dart';
 import 'discovery_feed_screen.dart';
 import 'home_toggle_screen.dart';
 import 'mentors_screen.dart';
@@ -33,7 +35,7 @@ class _AppShellState extends State<AppShell> {
 
   /// Tabs keep their scroll position and loaded data when you switch away and
   /// back, instead of refetching every time.
-  final _tabKeys = List.generate(5, (_) => GlobalKey<NavigatorState>());
+  final _tabKeys = List.generate(6, (_) => GlobalKey<NavigatorState>());
 
   void _goToTab(int index) => setState(() => _index = index);
 
@@ -61,6 +63,7 @@ class _AppShellState extends State<AppShell> {
         mastermindRepository: context.read<MastermindRepository>(),
         communityRepository: context.read<CommunityRepository>(),
       ),
+      DealsScreen(escrowRepository: context.read<EscrowRepository>()),
     ];
 
     return Scaffold(
@@ -125,7 +128,12 @@ class _AppShellState extends State<AppShell> {
             BottomNavigationBarItem(
               icon: Icon(Icons.groups_outlined),
               activeIcon: Icon(Icons.groups_rounded),
-              label: 'Mentorias',
+              label: 'Mentores',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.receipt_long_outlined),
+              activeIcon: Icon(Icons.receipt_long_rounded),
+              label: 'Contratos',
             ),
           ],
         ),

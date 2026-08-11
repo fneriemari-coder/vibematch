@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/models/feed_models.dart';
 import '../../data/models/user_models.dart';
@@ -44,39 +45,44 @@ class SwipeCubit extends Cubit<SwipeState> {
 
   final SwipeRepository _repository;
 
-  /// Called by DiscoveryFeedScreen's "Implementar no meu Negócio" CTA —
-  /// jumps straight into a filtered deck for one skill tag, entering LOCAL
-  /// mode automatically when coordinates are supplied.
+  /// Entered from DiscoveryFeedScreen's "Implementar no meu Negócio" CTA, in
+  /// LOCAL mode when the post came from the local stream.
+  ///
+  /// [skillTagId] is the feed post's tag row id; the server resolves it to the
+  /// tag name and keeps only providers who list that skill, so the deck the
+  /// user lands on matches the post they came from. An unknown id degrades to
+  /// the unfiltered deck rather than an empty one.
   Future<void> loadStackForTag({
     required String? skillTagId,
     SwipeMode mode = SwipeMode.cloud,
     double? lat,
     double? lng,
+  }) =>
+      loadStack(mode, lat: lat, lng: lng, skillTagId: skillTagId);
+
+  Future<void> loadStack(
+    SwipeMode mode, {
+    double? lat,
+    double? lng,
+    String? skillTagId,
   }) async {
     emit(const SwipeLoading());
     try {
       final candidates = await _repository.getStack(
         mode: mode,
+        skillTagId: skillTagId,
         lat: lat,
         lng: lng,
       );
       emit(SwipeStackLoaded(candidates, mode));
     } on DioException catch (e) {
       emit(SwipeError(_messageFor(e)));
-    }
-  }
-
-  Future<void> loadStack(SwipeMode mode, {double? lat, double? lng}) async {
-    emit(const SwipeLoading());
-    try {
-      final candidates = await _repository.getStack(
-        mode: mode,
-        lat: lat,
-        lng: lng,
-      );
-      emit(SwipeStackLoaded(candidates, mode));
-    } on DioException catch (e) {
-      emit(SwipeError(_messageFor(e)));
+    } catch (e) {
+      // Anything that is not a transport failure — realistically a `TypeError`
+      // out of `SwipeCandidate.fromJson` after a response-shape change. Without
+      // this the exception escaped the cubit and left it in SwipeLoading
+      // forever: an infinite spinner with no way back.
+      emit(SwipeError(_unexpected(e)));
     }
   }
 
@@ -101,6 +107,8 @@ class SwipeCubit extends Cubit<SwipeState> {
         return;
       }
       emit(SwipeError(_messageFor(e)));
+    } catch (e) {
+      emit(SwipeError(_unexpected(e)));
     }
   }
 
@@ -108,4 +116,12 @@ class SwipeCubit extends Cubit<SwipeState> {
       e.response?.data?['message']?.toString() ??
       e.message ??
       'Unexpected error';
+
+  /// Fallback copy for a non-transport failure. Deliberately generic: the
+  /// underlying `TypeError` text is meaningless to a user, and the point of
+  /// this state is that the screen offers a way out instead of hanging.
+  String _unexpected(Object e) {
+    debugPrint('SwipeCubit: unexpected failure — $e');
+    return 'Algo deu errado ao carregar. Tente de novo.';
+  }
 }

@@ -9,6 +9,7 @@ class SwipeRepository {
 
   Future<List<SwipeCandidate>> getStack({
     required SwipeMode mode,
+    String? skillTagId,
     double? lat,
     double? lng,
     double radiusKm = 25,
@@ -18,6 +19,7 @@ class SwipeRepository {
       '/swipes/stack',
       queryParameters: {
         'mode': mode.apiValue,
+        if (skillTagId != null) 'skillTagId': skillTagId,
         if (lat != null) 'lat': lat,
         if (lng != null) 'lng': lng,
         'radiusKm': radiusKm,

@@ -28,19 +28,58 @@ export class SwipesService {
   // ---------------------------------------------------------------------
 
   async getStack(viewerId: string, query: StackQueryDto): Promise<StackCandidate[]> {
+    const skill = await this.resolveSkillTag(query.skillTagId);
+
     switch (query.mode) {
       case SwipeMode.CLOUD:
-        return this.getCloudStack(viewerId, query.limit ?? 20);
+        return this.getCloudStack(viewerId, query.limit ?? 20, skill);
       case SwipeMode.LOCAL:
         if (query.lat === undefined || query.lng === undefined) {
           throw new BadRequestException('Local mode requires lat/lng');
         }
-        return this.getLocalStack(viewerId, query.lat, query.lng, query.radiusKm ?? 25, query.limit ?? 20);
+        return this.getLocalStack(
+          viewerId,
+          query.lat,
+          query.lng,
+          query.radiusKm ?? 25,
+          query.limit ?? 20,
+          skill,
+        );
       case SwipeMode.B2B:
-        return this.getB2BStack(viewerId, query.limit ?? 20);
+        return this.getB2BStack(viewerId, query.limit ?? 20, skill);
       default:
         throw new BadRequestException(`Unsupported mode: ${query.mode}`);
     }
+  }
+
+  /**
+   * Turns the feed's `PostTag` id into the tag name stored on provider
+   * profiles. The client only has the tag row id — profiles carry free-text
+   * skill names — so the join has to happen here.
+   *
+   * An unknown id returns null and the caller serves the unfiltered deck. A
+   * stale tag id should not produce an empty deck with no explanation; the
+   * worst case is a less relevant stack, not a dead end.
+   */
+  private async resolveSkillTag(skillTagId?: string): Promise<string | null> {
+    if (!skillTagId) return null;
+    const tag = await this.prisma.postTag.findUnique({
+      where: { id: skillTagId },
+      select: { tagName: true },
+    });
+    if (!tag) {
+      this.logger.debug(`Unknown skillTagId ${skillTagId} — serving the unfiltered stack`);
+      return null;
+    }
+    return tag.tagName;
+  }
+
+  /**
+   * `skills && ARRAY[name]` — array overlap, which Postgres can serve from a
+   * GIN index on the column, unlike a LIKE over a joined string.
+   */
+  private skillFilter(skill: string | null): Prisma.Sql {
+    return skill ? Prisma.sql`AND up.skills && ARRAY[${skill}]::text[]` : Prisma.empty;
   }
 
   /**
@@ -48,7 +87,11 @@ export class SwipesService {
    * PRO_PROVIDER subscribers get an algorithmic boost — they're ordered first,
    * simulating a paid-visibility feed rather than a purely chronological one.
    */
-  private async getCloudStack(viewerId: string, limit: number): Promise<StackCandidate[]> {
+  private async getCloudStack(
+    viewerId: string,
+    limit: number,
+    skill: string | null = null,
+  ): Promise<StackCandidate[]> {
     const excluded = await this.alreadySwipedIds(viewerId, SwipeMode.CLOUD);
 
     const rows = await this.prisma.$queryRaw<StackCandidate[]>(Prisma.sql`
@@ -69,6 +112,7 @@ export class SwipesService {
       WHERE u.role IN ('PROVIDER', 'BOTH')
         AND up.user_id != ${viewerId}
         AND up.user_id NOT IN (${Prisma.join(excluded.length ? excluded : [''])})
+        ${this.skillFilter(skill)}
       ORDER BY "isProBoosted" DESC NULLS LAST, ps.financial_health_score DESC NULLS LAST
       LIMIT ${limit};
     `);
@@ -83,6 +127,7 @@ export class SwipesService {
     lng: number,
     radiusKm: number,
     limit: number,
+    skill: string | null = null,
   ): Promise<StackCandidate[]> {
     const excluded = await this.alreadySwipedIds(viewerId, SwipeMode.LOCAL);
     const radiusMeters = radiusKm * 1000;
@@ -114,6 +159,7 @@ export class SwipesService {
           ST_MakePoint(${lng}, ${lat})::geography,
           ${radiusMeters}
         )
+        ${this.skillFilter(skill)}
       ORDER BY "distanceMeters" ASC
       LIMIT ${limit};
     `);
@@ -126,7 +172,11 @@ export class SwipesService {
    * into b2b_networking. This is a peer-to-peer partnership feed, not a
    * client-hires-provider feed, so role is intentionally unfiltered.
    */
-  private async getB2BStack(viewerId: string, limit: number): Promise<StackCandidate[]> {
+  private async getB2BStack(
+    viewerId: string,
+    limit: number,
+    skill: string | null = null,
+  ): Promise<StackCandidate[]> {
     const excluded = await this.alreadySwipedIds(viewerId, SwipeMode.B2B);
 
     const rows = await this.prisma.$queryRaw<StackCandidate[]>(Prisma.sql`
@@ -145,6 +195,7 @@ export class SwipesService {
       WHERE up.b2b_networking = true
         AND up.user_id != ${viewerId}
         AND up.user_id NOT IN (${Prisma.join(excluded.length ? excluded : [''])})
+        ${this.skillFilter(skill)}
       ORDER BY up.updated_at DESC
       LIMIT ${limit};
     `);

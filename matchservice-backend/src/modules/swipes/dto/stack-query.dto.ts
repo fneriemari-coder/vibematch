@@ -1,5 +1,15 @@
 import { Type } from 'class-transformer';
-import { IsEnum, IsLatitude, IsLongitude, IsNumber, IsOptional, Max, Min, ValidateIf } from 'class-validator';
+import {
+  IsEnum,
+  IsLatitude,
+  IsLongitude,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+  ValidateIf,
+} from 'class-validator';
 import { SwipeMode } from '@prisma/client';
 
 export class StackQueryDto {
@@ -32,4 +42,15 @@ export class StackQueryDto {
   @Min(1)
   @Max(50)
   limit?: number = 20;
+
+  /**
+   * A `PostTag` row id, sent by the Discovery Feed's "Implementar no meu
+   * Negócio" CTA. The service resolves it to that tag's name and keeps only
+   * providers who list the skill, so the deck matches the post the user came
+   * from. Unknown ids fall through to the unfiltered deck rather than
+   * returning nothing.
+   */
+  @IsOptional()
+  @IsString()
+  skillTagId?: string;
 }

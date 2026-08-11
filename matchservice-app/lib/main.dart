@@ -12,6 +12,7 @@ import 'data/repositories/auth_repository.dart';
 import 'data/repositories/chat_repository.dart';
 import 'data/repositories/community_repository.dart';
 import 'data/repositories/content_repository.dart';
+import 'data/repositories/escrow_repository.dart';
 import 'data/repositories/feed_repository.dart';
 import 'data/repositories/mastermind_repository.dart';
 import 'data/repositories/media_repository.dart';
@@ -24,6 +25,7 @@ import 'presentation/screens/discovery_feed_screen.dart';
 import 'presentation/screens/vibe_academy_screen.dart';
 import 'presentation/screens/auth_screen.dart';
 import 'presentation/screens/data_privacy_screen.dart';
+import 'presentation/screens/deals_screen.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
@@ -124,6 +126,7 @@ class _MatchServiceAppState extends State<MatchServiceApp> {
         RepositoryProvider(
           create: (_) => CommunityRepository(widget.dioClient),
         ),
+        RepositoryProvider(create: (_) => EscrowRepository(widget.dioClient)),
       ],
       child: BlocProvider(
         create: (context) => AuthCubit(widget.authRepository)..bootstrap(),
@@ -138,6 +141,15 @@ class _MatchServiceAppState extends State<MatchServiceApp> {
               return MaterialPageRoute(
                 builder: (_) => DiscoveryFeedScreen(
                   focusPostId: args?['focusPostId'] as String?,
+                ),
+              );
+            }
+            // Reachable from a push notification about a contract state
+            // change, not just from inside the app.
+            if (settings.name == '/deals') {
+              return MaterialPageRoute(
+                builder: (_) => DealsScreen(
+                  escrowRepository: EscrowRepository(widget.dioClient),
                 ),
               );
             }

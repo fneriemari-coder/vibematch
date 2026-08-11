@@ -8,6 +8,7 @@ import '../../data/repositories/wallet_repository.dart';
 import '../../logic/wallet/wallet_cubit.dart';
 import '../widgets/pulsing_status_dot.dart';
 import '../widgets/vibe_glass_card.dart';
+import '../widgets/vibe_ui.dart';
 
 /// Fintech-grade wallet dashboard: glowing K-Score header, glassmorphism
 /// balance + BNPL credit cards, and an animated installments/milestones
@@ -56,6 +57,12 @@ class _WalletView extends StatelessWidget {
             ScaffoldMessenger.of(
               context,
             ).showSnackBar(SnackBar(content: Text(state.message)));
+            // The cubit now leaves the error as the resting state so a
+            // BlocBuilder can actually render it; clearing it is the UI's job.
+            // The dashboard comes back as soon as the message is on screen —
+            // and when there is nothing to come back to (the initial load
+            // failed), the builder below shows the retry instead.
+            context.read<WalletCubit>().clearError();
           }
         },
         builder: (context, state) {
@@ -64,6 +71,16 @@ class _WalletView extends StatelessWidget {
               child: CircularProgressIndicator(
                 color: VibeMatchColors.neonPrimary,
               ),
+            );
+          }
+          if (state is WalletError) {
+            return VibeErrorState(
+              message: state.message,
+              onRetry: () => context.read<WalletCubit>().load(
+                    initialBalance: currentUser.walletBalance,
+                    currency: currentUser.isBrazil ? 'BRL' : 'USD',
+                    userId: currentUser.id,
+                  ),
             );
           }
           if (state is! WalletLoaded) {
@@ -252,6 +269,9 @@ class _BalanceCard extends StatelessWidget {
   void _showWithdrawSheet(BuildContext context, WalletLoaded state) {
     final controller = TextEditingController();
     final cubit = context.read<WalletCubit>();
+    // The controller outlives no widget's `dispose` — this view is stateless
+    // and the sheet is a route — so it is released when that route closes.
+    // Without this, every open of the sheet leaked one controller.
     showModalBottomSheet(
       context: context,
       backgroundColor: VibeMatchColors.surface,
@@ -297,12 +317,13 @@ class _BalanceCard extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ).whenComplete(controller.dispose);
   }
 
   void _showAdvanceSheet(BuildContext context) {
     final controller = TextEditingController();
     final cubit = context.read<WalletCubit>();
+    // Same as the withdraw sheet: released when the route closes.
     showModalBottomSheet(
       context: context,
       backgroundColor: VibeMatchColors.surface,
@@ -348,7 +369,7 @@ class _BalanceCard extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ).whenComplete(controller.dispose);
   }
 }
 

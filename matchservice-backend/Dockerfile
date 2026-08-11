@@ -31,6 +31,16 @@ RUN npm run build
 # on demand from the platform's shell — `npm run seed:prod`.
 RUN npm run build:seed
 
+# Same reasoning, two more on-demand console scripts: the simulated-population
+# generator (`npm run seed:sim`) and the AI course catalogue
+# (`npm run seed:ai-courses`). Neither runs at build or boot time — they are
+# compiled here only so the production image actually contains them when the
+# owner opens a shell on the platform. Skipping this step is invisible locally
+# (ts-node covers it) and only fails in production, where there is no ts-node
+# and no src/ to compile from.
+RUN npm run build:seed-sim
+RUN npm run build:seed-ai-courses
+
 # --- Stage 2: production runtime -------------------------------------------
 FROM node:20-slim AS runner
 WORKDIR /app

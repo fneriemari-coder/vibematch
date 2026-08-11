@@ -19,5 +19,9 @@ import { TranslationService } from './translation.service';
   ],
   providers: [ChatGateway, TranslationService],
   controllers: [ChatController, KanbanController],
+  // AdminModule's simulation bots persist chat messages with the same
+  // sourceLang/targetLang/translatedContent fields the gateway writes, and
+  // that resolution lives here.
+  exports: [TranslationService],
 })
 export class ChatModule {}

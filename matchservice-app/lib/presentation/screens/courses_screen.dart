@@ -96,6 +96,9 @@ class _CoursesScreenState extends State<CoursesScreen> {
   /// minuto" message instead of a spinner that looks hung.
   Future<void> _generateWithAi() async {
     final topicController = TextEditingController();
+    // Owned by this method rather than by the State, so it has to be released
+    // here — every open of the dialog used to leak one. `whenComplete` runs
+    // after the route is finalised, so nothing is still reading the controller.
     final topic = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -137,7 +140,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
           ),
         ],
       ),
-    );
+    ).whenComplete(topicController.dispose);
     if (topic == null || !mounted) return;
 
     showDialog<void>(

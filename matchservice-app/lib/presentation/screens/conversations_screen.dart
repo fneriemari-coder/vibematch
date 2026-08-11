@@ -5,8 +5,12 @@ import '../../core/api/dio_client.dart';
 import '../../core/theme/vibe_match_theme.dart';
 import '../../data/models/chat_models.dart';
 import '../../data/repositories/chat_repository.dart';
+import '../../data/repositories/escrow_repository.dart';
+import '../../logic/auth/auth_cubit.dart';
 import '../widgets/vibe_ui.dart';
 import 'chat_room_screen.dart';
+import 'create_deal_screen.dart';
+import 'deals_screen.dart';
 
 /// Conversations list — the way back into a chat room.
 ///
@@ -51,16 +55,69 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
           // The chat gateway is served by the API process itself, so its
           // origin is whatever the REST client is already pointed at.
           socketBaseUrl: context.read<DioClient>().dio.options.baseUrl,
+          chatRepository: widget.chatRepository,
         ),
       ),
     );
+  }
+
+  /// `EscrowRepository` is not in the app-wide provider list yet, so it is
+  /// built from the shared `DioClient` here — the same thing main.dart does
+  /// for `AcademyRepository` on the /vibe-academy route. See the report.
+  EscrowRepository get _escrowRepository =>
+      EscrowRepository(context.read<DioClient>());
+
+  void _openDeals() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => DealsScreen(escrowRepository: _escrowRepository),
+      ),
+    );
+  }
+
+  /// Turns a conversation into a contract.
+  ///
+  /// Whoever opens this from a conversation is the one hiring, so they are the
+  /// client and the other side is the provider — the same assumption the deck's
+  /// match flow makes, and the only one the stack supports (candidates are
+  /// always providers). The server re-checks both ids against the match.
+  Future<void> _closeDeal(Conversation conversation) async {
+    final auth = context.read<AuthCubit>().state;
+    if (auth is! AuthAuthenticated) return;
+
+    final created = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => CreateDealScreen(
+          escrowRepository: _escrowRepository,
+          matchId: conversation.matchId,
+          clientId: auth.user.id,
+          providerId: conversation.otherUserId,
+          counterpartName: conversation.otherUserName,
+          initialCurrency: auth.user.isBrazil ? 'BRL' : 'USD',
+        ),
+      ),
+    );
+    if (created == true && mounted) _openDeals();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: VibeMatchColors.background,
-      appBar: widget.showAppBar ? AppBar(title: const Text('Conversas')) : null,
+      appBar: widget.showAppBar
+          ? AppBar(
+              title: const Text('Conversas'),
+              actions: [
+                // The contracts surface has no tab of its own yet; this is the
+                // reachable entry point until the shell grows one.
+                IconButton(
+                  tooltip: 'Ver contratos',
+                  icon: const Icon(Icons.receipt_long_rounded),
+                  onPressed: _openDeals,
+                ),
+              ],
+            )
+          : null,
       body: SafeArea(
         child: RefreshIndicator(
           color: VibeMatchColors.neonPrimary,
@@ -114,6 +171,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                 itemBuilder: (context, i) => _ConversationTile(
                   conversation: conversations[i],
                   onTap: () => _open(conversations[i]),
+                  onCloseDeal: () => _closeDeal(conversations[i]),
                 ),
               );
             },
@@ -125,10 +183,15 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
 }
 
 class _ConversationTile extends StatelessWidget {
-  const _ConversationTile({required this.conversation, required this.onTap});
+  const _ConversationTile({
+    required this.conversation,
+    required this.onTap,
+    required this.onCloseDeal,
+  });
 
   final Conversation conversation;
   final VoidCallback onTap;
+  final VoidCallback onCloseDeal;
 
   @override
   Widget build(BuildContext context) {
@@ -189,6 +252,25 @@ class _ConversationTile extends StatelessWidget {
                           .take(2)
                           .map((s) => VibeTag(label: s)),
                     ],
+                  ),
+                ],
+                // A B2B match opens a partnership channel, not a paid
+                // contract — the server refuses an escrow project for one, so
+                // the affordance is not offered.
+                if (conversation.type != 'B2B') ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: onCloseDeal,
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        minimumSize: const Size(0, 32),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      icon: const Icon(Icons.handshake_outlined, size: 16),
+                      label: const Text('Fechar negócio'),
+                    ),
                   ),
                 ],
               ],
