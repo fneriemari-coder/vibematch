@@ -6,7 +6,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import OpenAI from 'openai';
+import { LazyOpenAI } from '../../common/ai/lazy-openai';
+// Type-only: runAudit assembles a multi-part vision payload and needs the
+// SDK's ChatCompletionContentPart shape. Erased at compile time, so it does
+// not reintroduce a client construction at boot.
+import type OpenAI from 'openai';
 import { EscrowStatus, MilestoneStatus, Prisma, WalletTransactionType } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { ScoreEngine } from '../users/score.engine';
@@ -53,7 +57,7 @@ const AUDIT_JSON_SCHEMA = {
 @Injectable()
 export class AiValidatorService {
   private readonly logger = new Logger(AiValidatorService.name);
-  private readonly openai: OpenAI;
+  private readonly openai: LazyOpenAI;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -61,7 +65,7 @@ export class AiValidatorService {
     private readonly maintenanceService: MaintenanceService,
     private readonly config: ConfigService,
   ) {
-    this.openai = new OpenAI({ apiKey: this.config.get('OPENAI_API_KEY') });
+    this.openai = new LazyOpenAI(this.config.get('OPENAI_API_KEY'), this.logger, 'milestone validation');
   }
 
   async verifyMilestone(requesterId: string, dto: VerifyMilestoneDto) {

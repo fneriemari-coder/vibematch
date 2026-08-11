@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import OpenAI from 'openai';
+import { LazyOpenAI } from '../../common/ai/lazy-openai';
 
 export interface ModerationVerdict {
   allowed: boolean;
@@ -37,11 +37,11 @@ const CONTEXT_CHECK_SCHEMA = {
 @Injectable()
 export class AiModeratorService {
   private readonly logger = new Logger(AiModeratorService.name);
-  private readonly openai: OpenAI;
+  private readonly openai: LazyOpenAI;
   private readonly model: string;
 
   constructor(private readonly config: ConfigService) {
-    this.openai = new OpenAI({ apiKey: this.config.get('OPENAI_API_KEY') });
+    this.openai = new LazyOpenAI(this.config.get('OPENAI_API_KEY'), this.logger, 'content moderation');
     this.model = this.config.get('OPENAI_INTENT_MODEL') ?? 'gpt-4o-mini';
   }
 

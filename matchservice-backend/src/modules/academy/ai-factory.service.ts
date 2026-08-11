@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import OpenAI from 'openai';
+import { LazyOpenAI } from '../../common/ai/lazy-openai';
 import PDFDocument from 'pdfkit';
 import { randomUUID } from 'crypto';
 import { Currency } from '@prisma/client';
@@ -85,7 +85,7 @@ const DEFAULT_PRICE_BRL = 997;
 @Injectable()
 export class AiFactoryService {
   private readonly logger = new Logger(AiFactoryService.name);
-  private readonly openai: OpenAI;
+  private readonly openai: LazyOpenAI;
   private readonly model: string;
 
   constructor(
@@ -94,7 +94,7 @@ export class AiFactoryService {
     private readonly storage: S3StorageService,
     private readonly eventEmitter: EventEmitter2,
   ) {
-    this.openai = new OpenAI({ apiKey: this.config.get('OPENAI_API_KEY') });
+    this.openai = new LazyOpenAI(this.config.get('OPENAI_API_KEY'), this.logger, 'AI course generation');
     this.model = this.config.get('OPENAI_INTENT_MODEL') ?? 'gpt-4o-mini';
   }
 

@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
-import OpenAI from 'openai';
+import { LazyOpenAI } from '../../common/ai/lazy-openai';
 import { PostStatus, Role } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
@@ -56,7 +56,7 @@ const BOT_PROFILES = [
 @Injectable()
 export class AiPublisherService {
   private readonly logger = new Logger(AiPublisherService.name);
-  private readonly openai: OpenAI;
+  private readonly openai: LazyOpenAI;
   private readonly model: string;
   private botIndex = 0;
 
@@ -64,7 +64,7 @@ export class AiPublisherService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
   ) {
-    this.openai = new OpenAI({ apiKey: this.config.get('OPENAI_API_KEY') });
+    this.openai = new LazyOpenAI(this.config.get('OPENAI_API_KEY'), this.logger, 'autonomous content publishing');
     this.model = this.config.get('OPENAI_INTENT_MODEL') ?? 'gpt-4o-mini';
   }
 

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import OpenAI from 'openai';
+import { LazyOpenAI } from '../../common/ai/lazy-openai';
 import { FeedMode, Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AiTranslateDto } from './dto/ai-translate.dto';
@@ -43,14 +43,14 @@ const INTENT_JSON_SCHEMA = {
 @Injectable()
 export class AiTranslatorService {
   private readonly logger = new Logger(AiTranslatorService.name);
-  private readonly openai: OpenAI;
+  private readonly openai: LazyOpenAI;
   private readonly model: string;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
   ) {
-    this.openai = new OpenAI({ apiKey: this.config.get('OPENAI_API_KEY') });
+    this.openai = new LazyOpenAI(this.config.get('OPENAI_API_KEY'), this.logger, 'AI intent translation');
     this.model = this.config.get('OPENAI_INTENT_MODEL') ?? 'gpt-4o-mini';
   }
 

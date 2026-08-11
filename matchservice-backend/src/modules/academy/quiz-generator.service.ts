@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import OpenAI from 'openai';
+import { LazyOpenAI } from '../../common/ai/lazy-openai';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
 export interface QuizQuestion {
@@ -40,14 +40,14 @@ const QUIZ_SCHEMA = {
 @Injectable()
 export class QuizGeneratorService {
   private readonly logger = new Logger(QuizGeneratorService.name);
-  private readonly openai: OpenAI;
+  private readonly openai: LazyOpenAI;
   private readonly model: string;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
   ) {
-    this.openai = new OpenAI({ apiKey: this.config.get('OPENAI_API_KEY') });
+    this.openai = new LazyOpenAI(this.config.get('OPENAI_API_KEY'), this.logger, 'quiz generation');
     this.model = this.config.get('OPENAI_INTENT_MODEL') ?? 'gpt-4o-mini';
   }
 
