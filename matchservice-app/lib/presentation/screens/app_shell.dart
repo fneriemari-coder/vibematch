@@ -5,15 +5,16 @@ import '../../core/theme/vibe_match_theme.dart';
 import '../../data/repositories/academy_repository.dart';
 import '../../data/repositories/chat_repository.dart';
 import '../../data/repositories/community_repository.dart';
-import '../../data/repositories/content_repository.dart';
 import '../../data/repositories/mastermind_repository.dart';
+import '../../data/models/feed_models.dart';
 import '../../logic/feed/feed_cubit.dart';
-import 'content_screen.dart';
+import '../../logic/swipe/swipe_cubit.dart';
 import 'conversations_screen.dart';
 import 'courses_screen.dart';
 import 'discovery_feed_screen.dart';
 import 'home_toggle_screen.dart';
 import 'mentors_screen.dart';
+import 'swipe_deck_screen.dart';
 
 /// Signed-in shell.
 ///
@@ -40,6 +41,13 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     final tabs = [
       HomeToggleScreen(onNavigateToTab: _goToTab),
+      // The deck is the product's core mechanic and used to be buried behind
+      // the home screen, so it gets a tab of its own.
+      BlocProvider(
+        create: (context) =>
+            SwipeCubit(context.read())..loadStack(SwipeMode.cloud),
+        child: const SwipeDeckScreen(),
+      ),
       // FeedCubit is not provided app-wide — it was never instantiated
       // anywhere, so the feed threw as soon as it was opened. It belongs to
       // this tab, so it is created here.
@@ -53,7 +61,6 @@ class _AppShellState extends State<AppShell> {
         mastermindRepository: context.read<MastermindRepository>(),
         communityRepository: context.read<CommunityRepository>(),
       ),
-      ContentScreen(contentRepository: context.read<ContentRepository>()),
     ];
 
     return Scaffold(
@@ -101,6 +108,11 @@ class _AppShellState extends State<AppShell> {
               label: 'Início',
             ),
             BottomNavigationBarItem(
+              icon: Icon(Icons.style_outlined),
+              activeIcon: Icon(Icons.style_rounded),
+              label: 'Conectar',
+            ),
+            BottomNavigationBarItem(
               icon: Icon(Icons.explore_outlined),
               activeIcon: Icon(Icons.explore_rounded),
               label: 'Feed',
@@ -114,11 +126,6 @@ class _AppShellState extends State<AppShell> {
               icon: Icon(Icons.groups_outlined),
               activeIcon: Icon(Icons.groups_rounded),
               label: 'Mentorias',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.article_outlined),
-              activeIcon: Icon(Icons.article_rounded),
-              label: 'Conteúdo',
             ),
           ],
         ),

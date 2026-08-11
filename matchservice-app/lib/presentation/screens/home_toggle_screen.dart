@@ -6,6 +6,7 @@ import '../../data/models/feed_models.dart';
 import '../../data/models/mastermind_models.dart';
 import '../../data/models/user_models.dart';
 import '../../data/repositories/admin_repository.dart';
+import '../../data/repositories/content_repository.dart';
 import '../../data/repositories/mastermind_repository.dart';
 import '../../data/repositories/wallet_repository.dart';
 import '../../logic/auth/auth_cubit.dart';
@@ -14,6 +15,7 @@ import '../widgets/vibe_logo.dart';
 import '../widgets/vibe_ui.dart';
 import 'admin_dashboard.dart';
 import 'admin_users_screen.dart';
+import 'content_screen.dart';
 import 'swipe_deck_screen.dart';
 import 'wallet_screen.dart';
 
@@ -54,7 +56,7 @@ class _HomeToggleScreenState extends State<HomeToggleScreen> {
       MaterialPageRoute(
         builder: (_) => BlocProvider(
           create: (context) => SwipeCubit(context.read())..loadStack(mode),
-          child: const SwipeDeckScreen(),
+          child: SwipeDeckScreen(initialMode: mode),
         ),
       ),
     );
@@ -146,13 +148,12 @@ class _HomeToggleScreenState extends State<HomeToggleScreen> {
                   runSpacing: 12,
                   children: [
                     ElevatedButton.icon(
-                      onPressed: () =>
-                          _enterSwipeMode(context, SwipeMode.cloud),
+                      onPressed: () => _goToTab(1),
                       icon: const Icon(Icons.bolt_rounded, size: 18),
                       label: const Text('Encontrar profissionais'),
                     ),
                     OutlinedButton(
-                      onPressed: () => _goToTab(2),
+                      onPressed: () => _goToTab(3),
                       child: const Text('Ver programas'),
                     ),
                   ],
@@ -299,7 +300,7 @@ class _HomeToggleScreenState extends State<HomeToggleScreen> {
             titleAccent: 'mentorias',
             subtitle: 'Sessões ao vivo com quem já resolveu o seu problema.',
             action: TextButton(
-              onPressed: () => _goToTab(3),
+              onPressed: () => _goToTab(4),
               child: const Text('Ver todas'),
             ),
           ),
@@ -338,7 +339,7 @@ class _HomeToggleScreenState extends State<HomeToggleScreen> {
               cardWidth: 290,
               itemCount: sessions.length,
               itemBuilder: (context, i) =>
-                  _SessionCard(session: sessions[i], onTap: () => _goToTab(3)),
+                  _SessionCard(session: sessions[i], onTap: () => _goToTab(4)),
             );
           },
         ),
@@ -362,24 +363,31 @@ class _HomeToggleScreenState extends State<HomeToggleScreen> {
           LayoutBuilder(
             builder: (context, constraints) {
               final columns = constraints.maxWidth >= 860 ? 3 : 1;
-              final entries = [
+              final entries = <(IconData, String, String, VoidCallback)>[
                 (
                   Icons.school_rounded,
                   'Cursos',
                   'Programas curtos e aplicáveis, com certificado e material.',
-                  2,
+                  () => _goToTab(3),
                 ),
                 (
                   Icons.groups_rounded,
                   'Mentorias e comunidades',
                   'Mentores, sessões ao vivo e círculos por convite.',
-                  3,
+                  () => _goToTab(4),
                 ),
                 (
                   Icons.article_rounded,
                   'Conteúdo',
                   'Artigos de gestão, vendas e liderança — e publique o seu.',
-                  4,
+                  () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => ContentScreen(
+                            contentRepository:
+                                context.read<ContentRepository>(),
+                          ),
+                        ),
+                      ),
                 ),
               ];
               return Wrap(
@@ -395,7 +403,7 @@ class _HomeToggleScreenState extends State<HomeToggleScreen> {
                       icon: e.$1,
                       label: e.$2,
                       subtitle: e.$3,
-                      onTap: () => _goToTab(e.$4),
+                      onTap: e.$4,
                     ),
                   );
                 }).toList(),
