@@ -30,12 +30,18 @@ export class AiWatcherService {
   private readonly logger = new Logger(AiWatcherService.name);
   private readonly simulatedFailureRate: number;
 
+  /// Only true when AI_WATCHER_SIMULATED_FAILURE_RATE is explicitly set —
+  /// simulation must be opted into, never inherited from a default.
+  private readonly simulationEnabled: boolean;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly pushNotificationService: PushNotificationService,
     private readonly config: ConfigService,
   ) {
-    this.simulatedFailureRate = Number(this.config.get('AI_WATCHER_SIMULATED_FAILURE_RATE') ?? '0.05');
+    const configuredRate = this.config.get<string>('AI_WATCHER_SIMULATED_FAILURE_RATE');
+    this.simulationEnabled = configuredRate !== undefined && configuredRate !== '';
+    this.simulatedFailureRate = Number(configuredRate ?? '0.05');
   }
 
   @Cron(CronExpression.EVERY_HOUR)
@@ -49,6 +55,14 @@ export class AiWatcherService {
 
     let failuresDetected = 0;
     for (const agreement of agreements) {
+      // No monitored URL means we have nothing to check. Falling back to a
+      // simulated failure here paged the provider — with a real push — about
+      // an outage that never happened, for a client whose system we were not
+      // watching at all. A fabricated critical alert is worse than silence,
+      // so agreements without a hostingUrl are skipped. The simulator is
+      // still available behind AI_WATCHER_SIMULATED_FAILURE_RATE for local
+      // development, but it must be opted into explicitly.
+      if (!agreement.hostingUrl && !this.simulationEnabled) continue;
       const failure = agreement.hostingUrl
         ? await this.realHealthCheck(agreement.hostingUrl)
         : this.simulateHealthCheck();

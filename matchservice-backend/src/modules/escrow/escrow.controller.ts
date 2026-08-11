@@ -21,8 +21,8 @@ export class EscrowController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.escrowService.findById(id);
+  findOne(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.escrowService.findByIdForUser(id, user.id);
   }
 
   @Post(':id/fund')

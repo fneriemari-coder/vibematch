@@ -295,7 +295,11 @@ class _BrandPanel extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const VibeLogo(markSize: 32, fontSize: 17),
+            const VibeLogo(
+              markSize: 40,
+              fontSize: 18,
+              tagline: 'Ecossistema de negócios',
+            ),
             SizedBox(height: compact ? 22 : 34),
             VibeHeroHeadline(
               text: 'Onde quem contrata e quem entrega',

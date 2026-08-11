@@ -6,7 +6,9 @@ export class FinanceProjectDto {
 
   @IsOptional()
   @IsInt()
+  // The product commits to "em até 4x". Allowing 12 here meant a client
+  // could finance far beyond what the platform underwrites.
   @Min(2)
-  @Max(12)
+  @Max(4)
   installmentCount?: number = 4;
 }

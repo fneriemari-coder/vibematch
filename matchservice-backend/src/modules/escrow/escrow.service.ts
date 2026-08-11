@@ -5,7 +5,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { EscrowStatus, MatchType, Prisma } from '@prisma/client';
+import { EscrowStatus, MatchType, MilestoneStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { ScoreEngine } from '../users/score.engine';
 import { MaintenanceService } from '../fintech/maintenance.service';
@@ -65,16 +65,74 @@ export class EscrowService {
     }
   }
 
+  /**
+   * Internal lookup — no authorization. Callers that serve a request must use
+   * `findByIdForUser`; this one exists for the state transitions below, which
+   * do their own participant checks.
+   */
   async findById(id: string) {
     const project = await this.prisma.escrowProject.findUnique({ where: { id } });
     if (!project) throw new NotFoundException('Escrow project not found');
     return project;
   }
 
+  /**
+   * The authorized read. `GET /escrow/:id` previously called `findById`
+   * directly, so any authenticated user could read any project's client,
+   * provider, budget and status by guessing an id — the commercial terms of
+   * other people's deals.
+   */
+  async findByIdForUser(id: string, userId: string) {
+    const project = await this.findById(id);
+    if (project.clientId !== userId && project.providerId !== userId) {
+      throw new ForbiddenException('You are not a participant in this project');
+    }
+    return project;
+  }
+
+  /**
+   * The caller's projects, newest first.
+   *
+   * Returns the counterpart's name and the milestone tally alongside each
+   * project. The bare rows this used to return were unrenderable — a list of
+   * uuids and amounts with no indication of who the deal is with or how far
+   * along it is — and resolving that client-side would have meant one request
+   * per project.
+   */
   async listForUser(userId: string) {
-    return this.prisma.escrowProject.findMany({
+    const projects = await this.prisma.escrowProject.findMany({
       where: { OR: [{ clientId: userId }, { providerId: userId }] },
       orderBy: { createdAt: 'desc' },
+      include: {
+        client: { select: { id: true, profile: { select: { name: true } } } },
+        provider: { select: { id: true, profile: { select: { name: true } } } },
+        milestones: { select: { status: true } },
+      },
+    });
+
+    return projects.map((project) => {
+      const isClient = project.clientId === userId;
+      const counterpart = isClient ? project.provider : project.client;
+      return {
+        id: project.id,
+        matchId: project.matchId,
+        status: project.status,
+        budget: project.budget,
+        currency: project.currency,
+        paymentModel: project.paymentModel,
+        installmentCount: project.installmentCount,
+        advanced: project.advanced,
+        role: isClient ? 'CLIENT' : 'PROVIDER',
+        counterpartId: counterpart.id,
+        counterpartName: counterpart.profile?.name ?? 'Usuário',
+        milestoneTotal: project.milestones.length,
+        milestoneApproved: project.milestones.filter((m) => m.status === MilestoneStatus.APPROVED)
+          .length,
+        createdAt: project.createdAt,
+        fundedAt: project.fundedAt,
+        completedAt: project.completedAt,
+        disputedAt: project.disputedAt,
+      };
     });
   }
 
