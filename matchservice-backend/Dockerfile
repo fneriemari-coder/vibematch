@@ -1,6 +1,17 @@
+# Debian (slim), not Alpine: Prisma's engines link against OpenSSL, and on
+# Alpine the engine-detection step fails ("failed to detect the libssl/openssl
+# version to use, defaulting to openssl-1.1.x") and then downloads a musl
+# engine that can't load at runtime — the container dies on `migrate deploy`
+# with "Could not parse schema engine response". Debian + an explicit openssl
+# package is Prisma's documented, well-trodden path.
+
 # --- Stage 1: build --------------------------------------------------------
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
 WORKDIR /app
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./
 COPY prisma ./prisma
@@ -15,9 +26,15 @@ COPY src ./src
 RUN npm run build
 
 # --- Stage 2: production runtime -------------------------------------------
-FROM node:20-alpine AS runner
+FROM node:20-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+
+# Also needed at runtime, not just at build: the query engine loads libssl on
+# every boot, and `prisma migrate deploy` runs the schema engine below.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./
 COPY prisma ./prisma
