@@ -51,13 +51,20 @@ class DefaultFirebaseOptions {
   );
 }
 
-/// Web push needs the VAPID public key from
+/// Web Push VAPID key, from
 /// Console → Configurações do projeto → Cloud Messaging → Certificados push da Web.
 ///
-/// Passed at build time (`--dart-define=FIREBASE_VAPID_KEY=B...`) rather than
-/// hardcoded, so rotating the key pair is a redeploy and not a code change.
-/// While it is empty, `FirebaseMessaging.getToken()` on web is skipped
-/// entirely — calling it without a key throws and would otherwise surface as a
-/// mysterious failure on every app boot.
-const String firebaseVapidKey =
-    String.fromEnvironment('FIREBASE_VAPID_KEY', defaultValue: '');
+/// This is the *public* half of the key pair — it is handed to the browser on
+/// every subscription and is no more secret than `apiKey` above, so it lives
+/// here with the rest of the client config rather than in CI configuration.
+/// Rotating the pair means editing this one line.
+///
+/// A `--dart-define=FIREBASE_VAPID_KEY=...` still wins, so a different Firebase
+/// project can be targeted at build time without a code change. When the value
+/// resolves to empty, `FirebaseMessaging.getToken()` is skipped on web — calling
+/// it without a key throws on every boot.
+const String firebaseVapidKey = String.fromEnvironment(
+  'FIREBASE_VAPID_KEY',
+  defaultValue:
+      'BF1y3VWAV1PpUANRe5KtLzqysAsjr-XMot_LOcMjltvWVZAdCyAGgWqjyot-_QB3Sad2TOa528QoSKXBAga0n6Y',
+);
