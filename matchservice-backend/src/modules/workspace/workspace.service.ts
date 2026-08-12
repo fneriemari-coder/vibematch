@@ -462,7 +462,7 @@ export class WorkspaceService {
 
   /**
    * Real providers on this marketplace who carry the skills the analysis asks
-   * for, ordered by K-Score.
+   * for, ordered by how well they match it — see `rankProviders`.
    *
    * Resolved on read and never stored: a provider who leaves, changes their
    * skills or whose score moves must not be rendered from a months-old
@@ -498,8 +498,8 @@ export class WorkspaceService {
       },
     });
 
-    return profiles
-      .map((profile) => ({
+    return rankProviders(
+      profiles.map((profile) => ({
         userId: profile.userId,
         name: profile.name,
         headline: profile.mentorHeadline?.trim() || firstSentence(profile.bio),
@@ -507,14 +507,10 @@ export class WorkspaceService {
         kScore: profile.user.score?.financialHealthScore ?? 0,
         hourlyRate: profile.hourlyRate ? Number(profile.hourlyRate) : null,
         rateCurrency: profile.rateCurrency,
-      }))
-      .sort(
-        (a, b) =>
-          b.kScore - a.kScore ||
-          overlap(b.skills, skills) - overlap(a.skills, skills) ||
-          a.name.localeCompare(b.name),
-      )
-      .slice(0, limit);
+      })),
+      skills,
+      limit,
+    );
   }
 
   /** The caller's own numbers, read fresh on every response. */
@@ -644,8 +640,37 @@ function overlap(providerSkills: string[], wanted: string[]): number {
   return providerSkills.filter((skill) => wanted.includes(skill)).length;
 }
 
+/**
+ * Orders providers for one analysis: relevance first, then K-Score.
+ *
+ * Ranking by K-Score first looks defensible and reads wrong. A high-scoring
+ * generalist who happens to carry one of the skills outranks the specialist
+ * the analysis just spent four findings pointing at — and the list's entire
+ * claim is "these are the people for *this* problem". A strong provider for a
+ * different problem breaks that claim, and no K-Score is worth it. Within the
+ * same overlap the higher score wins, which is where that signal belongs.
+ *
+ * Shared by both callers so the database path and the batch-loaded path cannot
+ * drift into ordering the same list two different ways.
+ */
+export function rankProviders(
+  providers: MatchedProvider[],
+  skills: string[],
+  limit = MAX_MATCHED_PROVIDERS,
+): MatchedProvider[] {
+  if (skills.length === 0) return [];
+  return providers
+    .filter((provider) => overlap(provider.skills, skills) > 0)
+    .sort(
+      (a, b) =>
+        overlap(b.skills, skills) - overlap(a.skills, skills) ||
+        b.kScore - a.kScore ||
+        a.name.localeCompare(b.name),
+    )
+    .slice(0, limit);
+}
+
 /** Narrows a batch-loaded provider list down to one analysis's own skills. */
 function pickProviders(providers: MatchedProvider[], skills: string[]): MatchedProvider[] {
-  if (skills.length === 0) return [];
-  return providers.filter((provider) => overlap(provider.skills, skills) > 0).slice(0, MAX_MATCHED_PROVIDERS);
+  return rankProviders(providers, skills);
 }
