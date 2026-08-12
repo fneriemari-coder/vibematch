@@ -2290,6 +2290,20 @@ function analisarContrato() {
 
   const NIVEL_TXT = { verde: 'Verde — não dispara', amarelo: 'Amarelo — dispara com folga estreita', vermelho: 'Vermelho — dispara com folga larga' };
 
+  /*
+   * "Este contrato não tem exposição a esse cenário" é uma resposta legítima e
+   * frequentemente a mais valiosa — mas um zero sozinho na tela lê como bug,
+   * não como resultado. Quando nada dispara, o motor diz por quê e aponta onde
+   * o risco realmente mora: é a diferença entre um relatório vazio e um
+   * relatório que manda o leitor para o documento certo.
+   */
+  const nenhumDisparo = !avaliadas.some((a) => a.disparou);
+  const ondeMora = nenhumDisparo
+    ? DOCUMENTOS.filter((d) => d.id !== doc.id)
+        .map((d) => ({ d, qtd: d.clausulas.filter((c) => c.gatilho.tipo === cond.tipo && c.gatilho.direcao === cond.direcao).length }))
+        .filter((x) => x.qtd > 0)
+    : [];
+
   document.getElementById('saida-contrato').innerHTML = `
     <div class="cartao" style="border-color:${total > ebitdaEstimado ? 'var(--vermelho)' : 'var(--linha)'}">
       <span class="rotulo-peq">Exposição no cenário "${esc(cond.original)}"</span>
@@ -2300,6 +2314,17 @@ function analisarContrato() {
         ${vermelhas} cláusula${vermelhas === 1 ? '' : 's'} em vermelho
       </p>
       ${total > ebitdaEstimado ? `<p style="font-size:13px;color:var(--vermelho);margin:9px 0 0"><b>A exposição supera o resultado do ano.</b> Neste cenário o contrato não reduz lucro — consome o resultado inteiro e entra no capital de giro.</p>` : ''}
+      ${nenhumDisparo ? `
+        <p style="font-size:13px;color:var(--neutro);margin:11px 0 0;border-left:2px solid var(--verde);padding-left:11px">
+          <b style="color:var(--verde)">Zero não é erro — é blindagem.</b>
+          Nenhuma das ${doc.clausulas.length} cláusulas de "${esc(doc.nome)}" tem gatilho de
+          <b>${cond.tipo}/${cond.direcao}</b>, então este contrato não reage a esse cenário.
+          ${ondeMora.length
+            ? `O risco mora em outro documento: ${ondeMora.map((x) => `<b>${esc(x.d.nome)}</b> (${x.qtd} cláusula${x.qtd === 1 ? '' : 's'})`).join(' e ')}.`
+            : 'Nenhum documento da carteira reage a esse cenário.'}
+        </p>
+        ${ondeMora.length ? `<button class="btn btn-ouro btn-peq" style="margin-top:11px" data-trocar-doc="${esc(ondeMora[0].d.id)}">Analisar em "${esc(ondeMora[0].d.nome)}"</button>` : ''}
+      ` : ''}
     </div>
 
     <div style="margin-top:var(--gap);display:grid;gap:12px">
@@ -2323,7 +2348,18 @@ function analisarContrato() {
         </article>`).join('')}
     </div>`;
 
-  logIA('CONTRATO', `Relatório fechado: <span class="val">${brl(total)}</span> de exposição, <b>${pct(total / ebitdaEstimado, 0)} do EBITDA estimado</b>. ${vermelhas ? `Cláusula mais grave: <b>${esc(avaliadas[0].c.titulo)}</b> (${brl(avaliadas[0].valor)}).` : 'Nenhuma cláusula em vermelho neste cenário.'}`, 'decisao');
+  document.querySelectorAll('[data-trocar-doc]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.getElementById('sel-doc').value = btn.dataset.trocarDoc;
+      document.getElementById('sel-doc').dispatchEvent(new Event('change'));
+      analisarContrato();
+    });
+  });
+
+  logIA('CONTRATO', nenhumDisparo
+    ? `Nenhuma cláusula de "${esc(doc.nome)}" tem gatilho <b>${cond.tipo}/${cond.direcao}</b> — exposição <span class="val">R$ 0</span> é o resultado correto, não ausência de resposta. ${ondeMora.length ? `O cenário morde em <b>${esc(ondeMora[0].d.nome)}</b>.` : ''}`
+    : `Relatório fechado: <span class="val">${brl(total)}</span> de exposição, <b>${pct(total / ebitdaEstimado, 0)} do EBITDA estimado</b>. ${vermelhas ? `Cláusula mais grave: <b>${esc(avaliadas[0].c.titulo)}</b> (${brl(avaliadas[0].valor)}).` : 'Nenhuma cláusula em vermelho neste cenário.'}`,
+    'decisao');
 }
 
 /* ============================================================================
