@@ -1,0 +1,2009 @@
+<title>Tração Contínua</title>
+
+<style>
+  /* ============================================================
+     TRAÇÃO CONTÍNUA — protótipo de ecossistema de negócios
+     Compromisso deliberado com um único mundo visual (escuro):
+     é a identidade da plataforma, não uma omissão. Toda cor é
+     pintada explicitamente para a página não pegar emprestado o
+     fundo do hospedeiro em nenhum tema.
+     ============================================================ */
+  :root {
+    --ink: #060E17;
+    --painel: #0E2033;
+    --painel-alto: #16334E;
+    --linha: #1E4362;
+    --linha-fraca: #14293D;
+    --creme: #F2EFE7;
+    --neutro: #8FA7BC;
+    --neutro-fraco: #5E7890;
+    --ouro: #C9A46B;
+    --ouro-claro: #E3C48D;
+    --verde: #4FA97E;
+    --amarelo: #D8A73E;
+    --vermelho: #C4584F;
+
+    --fonte-display: Georgia, "Times New Roman", ui-serif, serif;
+    --fonte-ui: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --fonte-dado: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
+    --raio: 10px;
+    --gap: 18px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ink);
+    color: var(--creme);
+    font-family: var(--fonte-ui);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3 { text-wrap: balance; margin: 0; }
+
+  button { font-family: inherit; font-size: inherit; cursor: pointer; }
+  button:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--ouro);
+    outline-offset: 2px;
+  }
+
+  /* ---------- Cabeçalho ---------- */
+  .topo {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 22px;
+    border-bottom: 1px solid var(--linha);
+    background: var(--painel);
+    flex-wrap: wrap;
+  }
+  .marca { display: flex; align-items: center; gap: 12px; }
+  .marca h1 {
+    font-family: var(--fonte-display);
+    font-size: 21px;
+    letter-spacing: 0.01em;
+    font-weight: 400;
+  }
+  .marca .sub {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--neutro-fraco);
+    display: block;
+    margin-top: 1px;
+  }
+  .topo-acoes { margin-left: auto; display: flex; gap: 10px; flex-wrap: wrap; }
+
+  .btn {
+    background: transparent;
+    color: var(--creme);
+    border: 1px solid var(--linha);
+    border-radius: 7px;
+    padding: 8px 14px;
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  .btn:hover { border-color: var(--ouro); color: var(--ouro-claro); }
+  .btn-ouro {
+    background: var(--ouro);
+    color: #14243A;
+    border-color: var(--ouro);
+    font-weight: 650;
+  }
+  .btn-ouro:hover { background: var(--ouro-claro); border-color: var(--ouro-claro); color: #14243A; }
+  .btn-peq { padding: 6px 11px; font-size: 13px; }
+
+  /* ---------- Estrutura ---------- */
+  .palco {
+    display: grid;
+    grid-template-columns: 246px minmax(0, 1fr);
+    gap: 0;
+    min-height: calc(100vh - 62px);
+  }
+
+  .trilho {
+    border-right: 1px solid var(--linha);
+    padding: 18px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: var(--painel);
+  }
+  .trilho .rotulo {
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--neutro-fraco);
+    padding: 0 8px 8px;
+  }
+  .aba {
+    display: grid;
+    grid-template-columns: 26px 1fr;
+    align-items: start;
+    gap: 10px;
+    text-align: left;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 10px;
+    color: var(--neutro);
+    transition: background .15s, color .15s, border-color .15s;
+  }
+  .aba:hover { background: var(--linha-fraca); color: var(--creme); }
+  .aba[aria-current="true"] {
+    background: var(--painel-alto);
+    border-color: var(--linha);
+    color: var(--creme);
+  }
+  .aba .num {
+    font-family: var(--fonte-dado);
+    font-size: 12px;
+    color: var(--ouro);
+    padding-top: 2px;
+  }
+  /* display:block — sem isto os dois spans ficam na mesma linha e o título
+     encosta na descrição sem separação nenhuma. */
+  .aba .tit { display: block; font-weight: 600; font-size: 14px; line-height: 1.3; }
+  .aba .des { display: block; font-size: 11.5px; color: var(--neutro-fraco); line-height: 1.35; margin-top: 3px; }
+  .aba[aria-current="true"] .des { color: var(--neutro); }
+
+  .conteudo { padding: 24px 26px 30px; min-width: 0; }
+
+  .modulo { display: none; }
+  .modulo.ativo { display: block; animation: entra .28s ease both; }
+  @keyframes entra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  .cabecalho-modulo { margin-bottom: 20px; }
+  .cabecalho-modulo .olho {
+    font-family: var(--fonte-dado);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ouro);
+  }
+  .cabecalho-modulo h2 {
+    font-family: var(--fonte-display);
+    font-size: 27px;
+    font-weight: 400;
+    margin: 5px 0 7px;
+  }
+  .cabecalho-modulo p { color: var(--neutro); max-width: 68ch; margin: 0; }
+
+  /* ---------- Peças ---------- */
+  .cartao {
+    background: var(--painel);
+    border: 1px solid var(--linha);
+    border-radius: var(--raio);
+    padding: 16px 18px;
+  }
+  .grade { display: grid; gap: var(--gap); }
+  .g2 { grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); }
+  .g3 { grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); }
+
+  .selo {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 3px 8px;
+    border-radius: 5px;
+    border: 1px solid var(--linha);
+    color: var(--neutro);
+    background: var(--linha-fraca);
+    white-space: nowrap;
+  }
+  .selo.tenho { border-color: rgba(79,169,126,.5); color: #8FD3B2; background: rgba(79,169,126,.1); }
+  .selo.preciso { border-color: rgba(201,164,107,.5); color: var(--ouro-claro); background: rgba(201,164,107,.1); }
+  .selo.casa { border-color: var(--ouro); color: #14243A; background: var(--ouro); font-weight: 700; }
+
+  .num-tese {
+    font-family: var(--fonte-display);
+    font-size: 31px;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .rotulo-peq {
+    font-size: 10.5px;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--neutro-fraco);
+  }
+
+  .barra-fundo {
+    height: 6px;
+    background: var(--linha-fraca);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .barra-preenche { height: 100%; background: var(--ouro); border-radius: 99px; transition: width .5s ease; }
+  .barra-preenche.risco { background: var(--vermelho); }
+  .barra-preenche.atencao { background: var(--amarelo); }
+  .barra-preenche.ok { background: var(--verde); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--linha-fraca); vertical-align: top; }
+  th {
+    font-size: 10.5px;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--neutro-fraco);
+    font-weight: 600;
+  }
+  td.n { font-family: var(--fonte-dado); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .rolagem { overflow-x: auto; }
+
+  select, input[type="text"], textarea {
+    width: 100%;
+    background: var(--ink);
+    color: var(--creme);
+    border: 1px solid var(--linha);
+    border-radius: 7px;
+    padding: 9px 11px;
+    font-family: inherit;
+    font-size: 14px;
+  }
+  textarea { resize: vertical; min-height: 84px; font-family: var(--fonte-dado); font-size: 13px; }
+  label.campo { display: block; margin-bottom: 12px; }
+  label.campo > span {
+    display: block;
+    font-size: 10.5px;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--neutro-fraco);
+    margin-bottom: 6px;
+  }
+
+  /* ---------- Console da IA ---------- */
+  .console {
+    position: sticky;
+    bottom: 0;
+    border-top: 1px solid var(--linha);
+    background: #071120;
+    grid-column: 1 / -1;
+  }
+  .console-topo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--linha-fraca);
+  }
+  .console-topo .rotulo-peq { color: var(--ouro); }
+  .pulso {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--verde);
+    animation: pulso 2s infinite;
+  }
+  @keyframes pulso { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
+  .console-linhas {
+    max-height: 168px;
+    overflow-y: auto;
+    padding: 10px 16px 14px;
+    font-family: var(--fonte-dado);
+    font-size: 12.5px;
+    line-height: 1.65;
+    display: flex;
+    flex-direction: column-reverse;
+  }
+  .linha-log { animation: surge .3s ease both; color: var(--neutro); }
+  @keyframes surge { from { opacity: 0; transform: translateX(-5px); } to { opacity: 1; transform: none; } }
+  .linha-log .hora { color: #43607D; }
+  .linha-log .tag { color: var(--ouro); }
+  .linha-log b { color: var(--creme); font-weight: 600; }
+  .linha-log.decisao { color: var(--creme); }
+  .linha-log.calculo .val { color: var(--ouro-claro); }
+
+  /* ---------- Deck de match ---------- */
+  .deck { display: grid; grid-template-columns: minmax(0,1.15fr) minmax(0,1fr); gap: var(--gap); align-items: start; }
+  .perfil-topo { display: flex; gap: 14px; align-items: flex-start; }
+  .avatar {
+    width: 52px; height: 52px; flex: none;
+    border-radius: 9px;
+    display: grid; place-items: center;
+    font-family: var(--fonte-display);
+    font-size: 19px;
+    color: var(--ouro-claro);
+    background: var(--painel-alto);
+    border: 1px solid var(--linha);
+  }
+  .componentes li {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4px 12px;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--linha-fraca);
+  }
+  .componentes { list-style: none; padding: 0; margin: 0; }
+  .componentes .desc { grid-column: 1 / -1; font-size: 11.5px; color: var(--neutro-fraco); }
+  .componentes .peso { font-family: var(--fonte-dado); font-size: 12px; color: var(--neutro); }
+
+  .lista-vazia { color: var(--neutro-fraco); font-style: italic; }
+
+  .semaforo { display: inline-flex; align-items: center; gap: 7px; font-weight: 650; font-size: 13px; }
+  .ponto { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .v-verde { color: #8FD3B2; } .v-verde .ponto { background: var(--verde); }
+  .v-amarelo { color: #E8C87C; } .v-amarelo .ponto { background: var(--amarelo); }
+  .v-vermelho { color: #E58C84; } .v-vermelho .ponto { background: var(--vermelho); }
+
+  .doc {
+    font-family: var(--fonte-dado);
+    font-size: 12.5px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    background: var(--ink);
+    border: 1px solid var(--linha);
+    border-radius: 8px;
+    padding: 16px;
+    max-height: 340px;
+    overflow-y: auto;
+    color: var(--neutro);
+  }
+
+  .trilha-item {
+    display: grid;
+    grid-template-columns: 30px 1fr auto;
+    gap: 12px;
+    align-items: center;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--linha-fraca);
+  }
+  .trilha-item .pos {
+    font-family: var(--fonte-dado);
+    color: var(--ouro);
+    font-size: 13px;
+  }
+  .subiu { color: var(--verde); font-size: 11.5px; font-family: var(--fonte-dado); }
+  .desceu { color: var(--neutro-fraco); font-size: 11.5px; font-family: var(--fonte-dado); }
+
+  @media (max-width: 900px) {
+    .palco { grid-template-columns: 1fr; }
+    .trilho {
+      flex-direction: row;
+      overflow-x: auto;
+      border-right: none;
+      border-bottom: 1px solid var(--linha);
+    }
+    .trilho .rotulo { display: none; }
+    .aba { min-width: 190px; }
+    .deck { grid-template-columns: 1fr; }
+    .conteudo { padding: 18px 16px 24px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+  }
+</style>
+
+<header class="topo">
+  <div class="marca">
+    <svg width="34" height="34" viewBox="0 0 40 40" aria-hidden="true">
+      <circle cx="20" cy="20" r="16" fill="none" stroke="#1E4362" stroke-width="1.4"/>
+      <circle cx="31.3" cy="8.7" r="2.1" fill="#C9A46B"/>
+      <circle cx="8.7" cy="8.7" r="2.1" fill="#C9A46B"/>
+      <circle cx="31.3" cy="31.3" r="2.1" fill="#C9A46B"/>
+      <circle cx="8.7" cy="31.3" r="2.1" fill="#C9A46B"/>
+      <path d="M20 11 L27 20 L20 29 Z" fill="#E3C48D"/>
+      <path d="M20 11 L13 20 L20 29 Z" fill="#C9A46B" opacity="0.62"/>
+    </svg>
+    <div>
+      <h1>Tração Contínua</h1>
+      <span class="sub">Protótipo operável · dados simulados em memória</span>
+    </div>
+  </div>
+  <div class="topo-acoes">
+    <button class="btn btn-peq" id="btn-reset">Reiniciar simulação</button>
+    <button class="btn btn-ouro btn-peq" id="btn-roteiro">▶ Roteiro de pitch</button>
+  </div>
+</header>
+
+<div class="palco">
+  <nav class="trilho" id="trilho" aria-label="Módulos do ecossistema">
+    <span class="rotulo">Percurso do pitch</span>
+  </nav>
+
+  <main class="conteudo">
+    <section class="modulo ativo" id="m-populacao" aria-labelledby="t1"></section>
+    <section class="modulo" id="m-match" aria-labelledby="t2"></section>
+    <section class="modulo" id="m-feed" aria-labelledby="t3"></section>
+    <section class="modulo" id="m-contratos" aria-labelledby="t4"></section>
+    <section class="modulo" id="m-lxp" aria-labelledby="t5"></section>
+  </main>
+
+  <div class="console" aria-live="polite">
+    <div class="console-topo">
+      <span class="pulso" aria-hidden="true"></span>
+      <span class="rotulo-peq">Console da IA — por que o sistema decidiu assim</span>
+      <button class="btn btn-peq" id="btn-limpar" style="margin-left:auto">Limpar</button>
+    </div>
+    <div class="console-linhas" id="console-linhas"></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================================
+   1. VOCABULÁRIO CONTROLADO
+   Competências são códigos, não texto livre. É isso que permite ao algoritmo
+   cruzar "preciso" com "tenho" por interseção de conjuntos em vez de adivinhar
+   por similaridade de string — a diferença entre um match explicável e um
+   match que ninguém consegue defender na frente de um investidor.
+   ========================================================================== */
+const COMP = {
+  CANAIS_TRACAO:      'Canais de tração',
+  GROWTH_PLG:         'Growth / PLG',
+  OUTBOUND_B2B:       'Outbound B2B',
+  INSIDE_SALES:       'Inside sales',
+  PRICING:            'Pricing',
+  UNIT_ECONOMICS:     'Unit economics',
+  MA_FUSOES:          'M&A e fusões',
+  VALUATION:          'Valuation',
+  CAPTACAO:           'Captação',
+  GESTAO_CAIXA:       'Gestão de caixa',
+  MARGEM:             'Margem de contribuição',
+  SUPPLY:             'Supply chain',
+  INDUSTRIA_40:       'Indústria 4.0',
+  FRANQUIAS:          'Expansão por franquias',
+  RETENCAO:           'Retenção e churn',
+  CS_ENTERPRISE:      'CS enterprise',
+  MARCA:              'Marca e posicionamento',
+  MIDIA_PERFORMANCE:  'Mídia de performance',
+  DADOS_BI:           'Dados e BI',
+  PRODUTO:            'Produto e discovery',
+  LIDERANCA:          'Cultura e liderança',
+  SUCESSAO:           'Sucessão familiar',
+  TRIBUTARIO:         'Estrutura tributária',
+  INTERNACIONAL:      'Internacionalização',
+  ECOMMERCE:          'Operação de e-commerce',
+  TAKE_RATE:          'Take rate de marketplace',
+};
+
+const SETOR = {
+  SAAS: 'SaaS B2B', INDUSTRIA: 'Indústria', VAREJO: 'Varejo', AGRO: 'Agronegócio',
+  SAUDE: 'Saúde', LOGISTICA: 'Logística', CONSTRUCAO: 'Construção', EDTECH: 'Educação',
+  ENERGIA: 'Energia', ALIMENTACAO: 'Alimentação', MODA: 'Moda D2C', MARKETPLACE: 'Marketplace',
+  MENTORIA: 'Mentoria',
+};
+
+/* Setores adjacentes: onde a experiência transfere mesmo sem ser o mesmo ramo.
+   Distância setorial não zera o match — insight de fora do ramo tem valor, só
+   vale menos que quem já viveu o mesmo problema. */
+const ADJACENTE = {
+  SAAS:       ['EDTECH', 'MARKETPLACE', 'SAUDE'],
+  INDUSTRIA:  ['AGRO', 'LOGISTICA', 'CONSTRUCAO', 'ENERGIA'],
+  VAREJO:     ['MODA', 'ALIMENTACAO', 'MARKETPLACE'],
+  AGRO:       ['INDUSTRIA', 'LOGISTICA'],
+  SAUDE:      ['SAAS', 'EDTECH'],
+  LOGISTICA:  ['INDUSTRIA', 'VAREJO', 'AGRO'],
+  CONSTRUCAO: ['INDUSTRIA', 'ENERGIA'],
+  EDTECH:     ['SAAS', 'SAUDE'],
+  ENERGIA:    ['INDUSTRIA', 'CONSTRUCAO'],
+  ALIMENTACAO:['VAREJO', 'AGRO'],
+  MODA:       ['VAREJO', 'MARKETPLACE'],
+  MARKETPLACE:['SAAS', 'VAREJO', 'MODA'],
+  MENTORIA:   [],
+};
+
+const CIDADES = {
+  'São Paulo':     { lat: -23.55, lng: -46.63 },
+  'Joinville':     { lat: -26.30, lng: -48.85 },
+  'Fortaleza':     { lat: -3.73,  lng: -38.52 },
+  'Belo Horizonte':{ lat: -19.92, lng: -43.94 },
+  'Curitiba':      { lat: -25.43, lng: -49.27 },
+  'Recife':        { lat: -8.05,  lng: -34.88 },
+  'Rondonópolis':  { lat: -16.47, lng: -54.63 },
+  'Florianópolis': { lat: -27.59, lng: -48.55 },
+  'Goiânia':       { lat: -16.68, lng: -49.25 },
+  'Campinas':      { lat: -22.90, lng: -47.06 },
+  'Porto Alegre':  { lat: -30.03, lng: -51.23 },
+  'Santo André':   { lat: -23.66, lng: -46.53 },
+};
+
+/* ============================================================================
+   2. POPULAÇÃO DO ECOSSISTEMA — 16 perfis corporativos
+   Cada um carrega OKRs com progresso e prazo, o que "tem", o que "precisa",
+   formação executiva concluída e faturamento. Os OKRs não são enfeite: o
+   algoritmo de match e o LXP leem o atraso deles para priorizar.
+   ========================================================================== */
+const USUARIOS = [
+  {
+    id: 'u1', nome: 'Marina Toledo', cargo: 'CEO e cofundadora', empresa: 'Fluxo Contábil',
+    setor: 'SAAS', faturamento: 5_200_000, funcionarios: 42, cidade: 'São Paulo', papel: 'FUNDADOR',
+    resumo: 'SaaS de fechamento contábil para escritórios. Produto maduro, aquisição travada em indicação.',
+    tenho: ['PRODUTO', 'DADOS_BI', 'PRICING'],
+    preciso: ['CANAIS_TRACAO', 'OUTBOUND_B2B', 'RETENCAO'],
+    formacao: ['Gestão de Alta Performance', 'Growth para SaaS'],
+    okrs: [
+      { titulo: 'Abrir 2 canais de aquisição fora de indicação', metrica: '2 canais com CAC < R$ 4.800', progresso: 22, prazoDias: 34 },
+      { titulo: 'Reduzir churn logo de 2,4% para 1,4% ao mês', metrica: 'churn mensal', progresso: 41, prazoDias: 58 },
+      { titulo: 'MRR de R$ 430k para R$ 620k', metrica: 'MRR', progresso: 37, prazoDias: 72 },
+    ],
+  },
+  {
+    id: 'u2', nome: 'Ricardo Bastos', cargo: 'CFO', empresa: 'Metalúrgica Bastos',
+    setor: 'INDUSTRIA', faturamento: 21_000_000, funcionarios: 180, cidade: 'Joinville', papel: 'EXECUTIVO',
+    resumo: 'Indústria familiar de terceira geração. Prepara aquisição de concorrente regional.',
+    tenho: ['GESTAO_CAIXA', 'MARGEM', 'SUPPLY'],
+    preciso: ['MA_FUSOES', 'VALUATION', 'SUCESSAO'],
+    formacao: ['Finanças para Executivos', 'Conselho e Governança'],
+    okrs: [
+      { titulo: 'Fechar aquisição da concorrente de Blumenau', metrica: 'LOI assinada', progresso: 18, prazoDias: 41 },
+      { titulo: 'Montar acordo de sócios da 3ª geração', metrica: 'acordo assinado', progresso: 9, prazoDias: 88 },
+      { titulo: 'Elevar margem EBITDA de 11% para 15%', metrica: 'margem EBITDA', progresso: 55, prazoDias: 96 },
+    ],
+  },
+  {
+    id: 'u3', nome: 'Helena Prado', cargo: 'Mentora · ex-CGO de unicórnio', empresa: 'Prado Advisory',
+    setor: 'MENTORIA', faturamento: 0, funcionarios: 3, cidade: 'São Paulo', papel: 'MENTOR',
+    resumo: 'Escalou aquisição de R$ 8M para R$ 210M em ARR. Especialista em abrir canal do zero.',
+    tenho: ['CANAIS_TRACAO', 'GROWTH_PLG', 'OUTBOUND_B2B', 'RETENCAO', 'INSIDE_SALES'],
+    preciso: ['INTERNACIONAL'],
+    formacao: ['Growth Avançado', 'Board Member'],
+    escalaAtendida: [3_000_000, 60_000_000], hora: 890, nps: 92,
+    okrs: [{ titulo: 'Atender 6 empresas em estágio de abertura de canal', metrica: 'mentorados ativos', progresso: 67, prazoDias: 45 }],
+  },
+  {
+    id: 'u4', nome: 'Caio Menezes', cargo: 'CEO', empresa: 'Solar Norte',
+    setor: 'ENERGIA', faturamento: 14_000_000, funcionarios: 96, cidade: 'Fortaleza', papel: 'FUNDADOR',
+    resumo: 'Integradora de energia solar. Crescimento rápido, capital de giro apertado.',
+    tenho: ['CANAIS_TRACAO', 'MIDIA_PERFORMANCE', 'INSIDE_SALES'],
+    preciso: ['GESTAO_CAIXA', 'UNIT_ECONOMICS', 'MARGEM'],
+    formacao: ['Gestão de Alta Performance'],
+    okrs: [
+      { titulo: 'Reduzir ciclo de caixa de 94 para 60 dias', metrica: 'ciclo de caixa', progresso: 15, prazoDias: 29 },
+      { titulo: 'Margem por projeto de 17% para 24%', metrica: 'margem projeto', progresso: 33, prazoDias: 67 },
+    ],
+  },
+  {
+    id: 'u5', nome: 'Patrícia Lemos', cargo: 'Sócia-diretora', empresa: 'Rede Sabor Nordeste',
+    setor: 'ALIMENTACAO', faturamento: 38_000_000, funcionarios: 410, cidade: 'Recife', papel: 'EXECUTIVO',
+    resumo: '31 lojas próprias. Quer migrar para franquia sem perder padrão operacional.',
+    tenho: ['SUPPLY', 'MARGEM', 'LIDERANCA'],
+    preciso: ['FRANQUIAS', 'MARCA', 'DADOS_BI'],
+    formacao: ['Expansão e Franchising', 'Gestão de Alta Performance'],
+    okrs: [
+      { titulo: 'Validar modelo de franquia em 3 praças-piloto', metrica: 'praças validadas', progresso: 28, prazoDias: 52 },
+      { titulo: 'Padronizar CMV abaixo de 31% na rede', metrica: 'CMV', progresso: 62, prazoDias: 74 },
+    ],
+  },
+  {
+    id: 'u6', nome: 'Gustavo Alencar', cargo: 'Fundador e CEO', empresa: 'Cargo Ágil',
+    setor: 'LOGISTICA', faturamento: 9_500_000, funcionarios: 130, cidade: 'Curitiba', papel: 'FUNDADOR',
+    resumo: 'Last mile para e-commerce. Depende de 2 clientes que somam 71% da receita.',
+    tenho: ['SUPPLY', 'DADOS_BI', 'UNIT_ECONOMICS'],
+    preciso: ['OUTBOUND_B2B', 'PRICING', 'CS_ENTERPRISE'],
+    formacao: ['Gestão de Alta Performance'],
+    okrs: [
+      { titulo: 'Derrubar concentração do maior cliente para 35%', metrica: '% receita top 1', progresso: 12, prazoDias: 26 },
+      { titulo: 'Fechar 8 contratos enterprise novos', metrica: 'contratos', progresso: 25, prazoDias: 61 },
+    ],
+  },
+  {
+    id: 'u7', nome: 'Beatriz Furtado', cargo: 'CEO', empresa: 'Vitta Diagnósticos',
+    setor: 'SAUDE', faturamento: 27_000_000, funcionarios: 240, cidade: 'Recife', papel: 'EXECUTIVO',
+    resumo: 'Rede de laboratórios. Negocia entrada de fundo minoritário.',
+    tenho: ['LIDERANCA', 'CS_ENTERPRISE', 'MARGEM'],
+    preciso: ['VALUATION', 'CAPTACAO', 'DADOS_BI'],
+    formacao: ['Finanças para Executivos'],
+    okrs: [
+      { titulo: 'Fechar rodada minoritária de R$ 18M', metrica: 'term sheet', progresso: 44, prazoDias: 38 },
+      { titulo: 'Ticket médio de R$ 148 para R$ 190', metrica: 'ticket médio', progresso: 51, prazoDias: 80 },
+    ],
+  },
+  {
+    id: 'u8', nome: 'Eduardo Kimura', cargo: 'Mentor · ex-CFO de companhia listada', empresa: 'Kimura Partners',
+    setor: 'MENTORIA', faturamento: 0, funcionarios: 5, cidade: 'São Paulo', papel: 'MENTOR',
+    resumo: 'Conduziu 14 transações de M&A entre R$ 15M e R$ 400M. Foco em empresa familiar.',
+    tenho: ['MA_FUSOES', 'VALUATION', 'CAPTACAO', 'TRIBUTARIO', 'SUCESSAO'],
+    preciso: ['MIDIA_PERFORMANCE'],
+    formacao: ['Board Member', 'M&A Avançado'],
+    escalaAtendida: [10_000_000, 400_000_000], hora: 1_240, nps: 96,
+    okrs: [{ titulo: 'Acompanhar 4 processos de M&A até o closing', metrica: 'processos ativos', progresso: 50, prazoDias: 70 }],
+  },
+  {
+    id: 'u9', nome: 'Larissa Coelho', cargo: 'CEO', empresa: 'Trama',
+    setor: 'MODA', faturamento: 6_800_000, funcionarios: 55, cidade: 'São Paulo', papel: 'FUNDADOR',
+    resumo: 'Moda autoral D2C. Cresce em receita e perde margem — mídia paga come o resultado.',
+    tenho: ['MARCA', 'ECOMMERCE', 'PRODUTO'],
+    preciso: ['UNIT_ECONOMICS', 'MARGEM', 'RETENCAO'],
+    formacao: ['Growth Marketing'],
+    okrs: [
+      { titulo: 'Trazer o CAC pago de R$ 118 para R$ 74', metrica: 'CAC', progresso: 19, prazoDias: 31 },
+      { titulo: 'Recompra em 90 dias de 18% para 30%', metrica: 'recompra', progresso: 27, prazoDias: 64 },
+    ],
+  },
+  {
+    id: 'u10', nome: 'Fernando Dutra', cargo: 'CEO', empresa: 'AgroPrecisão',
+    setor: 'AGRO', faturamento: 45_000_000, funcionarios: 150, cidade: 'Rondonópolis', papel: 'EXECUTIVO',
+    resumo: 'Insumos e serviços agronômicos. Exposição pesada a câmbio e a safra.',
+    tenho: ['SUPPLY', 'GESTAO_CAIXA', 'DADOS_BI'],
+    preciso: ['INTERNACIONAL', 'TRIBUTARIO', 'MA_FUSOES'],
+    formacao: ['Finanças para Executivos', 'Conselho e Governança'],
+    okrs: [
+      { titulo: 'Estruturar hedge cambial para 70% das compras', metrica: '% hedgeado', progresso: 35, prazoDias: 24 },
+      { titulo: 'Abrir operação de exportação para o Paraguai', metrica: 'primeira venda', progresso: 8, prazoDias: 110 },
+    ],
+  },
+  {
+    id: 'u11', nome: 'Juliana Sá', cargo: 'Fundadora', empresa: 'Escala EdTech',
+    setor: 'EDTECH', faturamento: 3_100_000, funcionarios: 28, cidade: 'Florianópolis', papel: 'FUNDADOR',
+    resumo: 'Formação corporativa por assinatura. Ótima retenção, aquisição cara.',
+    tenho: ['RETENCAO', 'PRODUTO', 'CS_ENTERPRISE'],
+    preciso: ['CANAIS_TRACAO', 'OUTBOUND_B2B', 'PRICING'],
+    formacao: ['Growth para SaaS'],
+    okrs: [
+      { titulo: 'Sair de 41 para 90 contas pagantes', metrica: 'contas', progresso: 30, prazoDias: 47 },
+      { titulo: 'Payback de CAC de 19 para 11 meses', metrica: 'payback', progresso: 21, prazoDias: 69 },
+    ],
+  },
+  {
+    id: 'u12', nome: 'Otávio Ribeiro', cargo: 'COO', empresa: 'Construtora Ribeiro',
+    setor: 'CONSTRUCAO', faturamento: 62_000_000, funcionarios: 520, cidade: 'Goiânia', papel: 'EXECUTIVO',
+    resumo: 'Incorporadora regional. Obras atrasando e multa contratual acumulando.',
+    tenho: ['SUPPLY', 'LIDERANCA', 'GESTAO_CAIXA'],
+    preciso: ['DADOS_BI', 'INDUSTRIA_40', 'MARGEM'],
+    formacao: ['Gestão de Alta Performance', 'Operações e Processos'],
+    okrs: [
+      { titulo: 'Zerar atraso acima de 30 dias em 4 obras', metrica: 'obras atrasadas', progresso: 16, prazoDias: 22 },
+      { titulo: 'Custo por m² 9% abaixo do orçado', metrica: 'custo/m²', progresso: 48, prazoDias: 85 },
+    ],
+  },
+  {
+    id: 'u13', nome: 'Camila Nogueira', cargo: 'Mentora · retenção enterprise', empresa: 'Nogueira CS',
+    setor: 'MENTORIA', faturamento: 0, funcionarios: 2, cidade: 'Campinas', papel: 'MENTOR',
+    resumo: 'Levou churn de carteira enterprise de 3,1% para 0,9% ao mês em duas empresas.',
+    tenho: ['RETENCAO', 'CS_ENTERPRISE', 'PRICING', 'UNIT_ECONOMICS'],
+    preciso: ['MARCA'],
+    formacao: ['Customer Success Avançado'],
+    escalaAtendida: [2_000_000, 80_000_000], hora: 720, nps: 89,
+    okrs: [{ titulo: 'Publicar método de retenção enterprise', metrica: 'módulos publicados', progresso: 40, prazoDias: 55 }],
+  },
+  {
+    id: 'u14', nome: 'Rodrigo Paes', cargo: 'CEO', empresa: 'Ponto B2B',
+    setor: 'MARKETPLACE', faturamento: 11_000_000, funcionarios: 64, cidade: 'Campinas', papel: 'FUNDADOR',
+    resumo: 'Marketplace de suprimentos industriais. GMV cresce, take rate encolhe.',
+    tenho: ['TAKE_RATE', 'ECOMMERCE', 'DADOS_BI'],
+    preciso: ['PRICING', 'UNIT_ECONOMICS', 'CAPTACAO'],
+    formacao: ['Growth para SaaS', 'Finanças para Executivos'],
+    okrs: [
+      { titulo: 'Take rate de 6,2% para 9%', metrica: 'take rate', progresso: 24, prazoDias: 36 },
+      { titulo: 'Levantar Série A de R$ 25M', metrica: 'rodada', progresso: 13, prazoDias: 92 },
+    ],
+  },
+  {
+    id: 'u15', nome: 'Simone Vasques', cargo: 'CEO', empresa: 'Rede Bem Clínicas',
+    setor: 'SAUDE', faturamento: 18_000_000, funcionarios: 175, cidade: 'Porto Alegre', papel: 'EXECUTIVO',
+    resumo: '12 clínicas franqueadas. Padrão de atendimento oscila entre unidades.',
+    tenho: ['FRANQUIAS', 'MARCA', 'LIDERANCA'],
+    preciso: ['DADOS_BI', 'CS_ENTERPRISE', 'MARGEM'],
+    formacao: ['Expansão e Franchising'],
+    okrs: [
+      { titulo: 'NPS acima de 70 em todas as 12 unidades', metrica: 'NPS mínimo', progresso: 39, prazoDias: 43 },
+      { titulo: 'Abrir 6 unidades novas no Sul', metrica: 'unidades', progresso: 50, prazoDias: 78 },
+    ],
+  },
+  {
+    id: 'u16', nome: 'André Tavares', cargo: 'Mentor · mídia e performance', empresa: 'Tavares Growth',
+    setor: 'MENTORIA', faturamento: 0, funcionarios: 4, cidade: 'Santo André', papel: 'MENTOR',
+    resumo: 'Gestão de R$ 240M em mídia. Trabalha margem de contribuição, não ROAS de vaidade.',
+    tenho: ['MIDIA_PERFORMANCE', 'UNIT_ECONOMICS', 'MARGEM', 'ECOMMERCE'],
+    preciso: ['INTERNACIONAL'],
+    formacao: ['Growth Marketing', 'Analytics Avançado'],
+    escalaAtendida: [1_000_000, 50_000_000], hora: 640, nps: 87,
+    okrs: [{ titulo: 'Auditar mídia de 10 operações D2C', metrica: 'auditorias', progresso: 60, prazoDias: 50 }],
+  },
+];
+
+const porId = (id) => USUARIOS.find((u) => u.id === id);
+
+/* ============================================================================
+   3. UTILITÁRIOS
+   ========================================================================== */
+const brl = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+const brlCent = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const pct = (v, casas = 0) => `${(v * 100).toFixed(casas).replace('.', ',')}%`;
+const iniciais = (nome) => nome.split(' ').filter(Boolean).map((p) => p[0]).slice(0, 2).join('').toUpperCase();
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+/** Haversine — usada no cruzamento de geolocalização das mentorias híbridas. */
+function distanciaKm(a, b) {
+  const R = 6371;
+  const rad = (g) => (g * Math.PI) / 180;
+  const dLat = rad(b.lat - a.lat);
+  const dLng = rad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return Math.round(2 * R * Math.asin(Math.sqrt(h)));
+}
+
+/** Um OKR está em risco quando o tempo consumido corre à frente da entrega. */
+function riscoOkr(okr) {
+  const janela = 90;
+  const decorrido = (janela - okr.prazoDias) / janela;
+  const defasagem = decorrido - okr.progresso / 100;
+  if (defasagem > 0.28) return 'CRITICO';
+  if (defasagem > 0.10) return 'ATRASADO';
+  return 'NO_PRAZO';
+}
+const OKR_ROTULO = { CRITICO: 'crítico', ATRASADO: 'atrasado', NO_PRAZO: 'no prazo' };
+const OKR_CLASSE = { CRITICO: 'risco', ATRASADO: 'atencao', NO_PRAZO: 'ok' };
+
+/* ============================================================================
+   4. CONSOLE DA IA
+   Cada decisão do sistema escreve aqui a conta que fez. É o que transforma a
+   demonstração em argumento: o investidor não vê um número aparecer, vê de
+   onde ele veio.
+   ========================================================================== */
+const consoleEl = document.getElementById('console-linhas');
+let relogio = new Date(2026, 7, 12, 9, 14, 0);
+
+function logIA(tag, texto, tipo = '') {
+  relogio = new Date(relogio.getTime() + (11 + Math.floor(Math.random() * 40)) * 1000);
+  const hora = relogio.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const linha = document.createElement('div');
+  linha.className = `linha-log ${tipo}`;
+  linha.innerHTML = `<span class="hora">${hora}</span> <span class="tag">[${esc(tag)}]</span> ${texto}`;
+  consoleEl.prepend(linha);
+  while (consoleEl.children.length > 120) consoleEl.lastChild.remove();
+  console.log(`[${hora}] [${tag}] ${linha.textContent.replace(/^.*?\]\s/, '')}`);
+}
+
+document.getElementById('btn-limpar').addEventListener('click', () => {
+  consoleEl.innerHTML = '';
+  logIA('SISTEMA', 'Console limpo. O motor continua rodando.');
+});
+
+/* ============================================================================
+   5. ALGORITMO DE MATCH POR COMPLEMENTARIDADE
+   Não é afinidade. São cinco componentes ponderados, cada um com uma razão
+   de negócio por trás:
+
+   45  COMPLEMENTARIDADE — que fração dos gargalos de A o B efetivamente cobre
+   20  RECIPROCIDADE     — A devolve algo? relação de mão dupla dura mais
+   20  ESCALA            — experiência transfere entre faturamentos próximos
+   10  SETOR             — mesmo ramo vale mais, ramo distante não vale zero
+    5  URGÊNCIA DE OKR   — bônus quando o gargalo está num OKR em risco
+   ========================================================================== */
+const PESOS = { complementaridade: 45, reciprocidade: 20, escala: 20, setor: 10, urgencia: 5 };
+
+function interseccao(a, b) { return a.filter((x) => b.includes(x)); }
+
+function fatorEscala(a, b) {
+  // Mentor declara a faixa de faturamento que atende; fora dela o conselho
+  // não transfere — quem escalou R$ 400M raramente ajuda quem fatura R$ 3M.
+  if (b.escalaAtendida) {
+    const [min, max] = b.escalaAtendida;
+    if (a.faturamento >= min && a.faturamento <= max) return 1;
+    const alvo = a.faturamento < min ? min : max;
+    const dist = Math.abs(Math.log10(a.faturamento || 1) - Math.log10(alvo));
+    return Math.max(0, 1 - dist / 1.2);
+  }
+  if (!a.faturamento || !b.faturamento) return 0.5;
+  const dist = Math.abs(Math.log10(a.faturamento) - Math.log10(b.faturamento));
+  return Math.max(0, 1 - dist / 1.5);
+}
+
+function fatorSetor(a, b) {
+  if (b.setor === 'MENTORIA' || a.setor === 'MENTORIA') return 0.8;
+  if (a.setor === b.setor) return 1;
+  if ((ADJACENTE[a.setor] || []).includes(b.setor)) return 0.6;
+  return 0.25;
+}
+
+function okrsEmRisco(u) {
+  return (u.okrs || []).filter((o) => riscoOkr(o) !== 'NO_PRAZO');
+}
+
+/** Liga um gargalo à competência que o resolve, para o bônus de urgência. */
+const OKR_COMPETENCIA = {
+  'Abrir 2 canais de aquisição fora de indicação': ['CANAIS_TRACAO', 'OUTBOUND_B2B'],
+  'Reduzir churn logo de 2,4% para 1,4% ao mês': ['RETENCAO', 'CS_ENTERPRISE'],
+  'MRR de R$ 430k para R$ 620k': ['CANAIS_TRACAO', 'PRICING'],
+  'Fechar aquisição da concorrente de Blumenau': ['MA_FUSOES', 'VALUATION'],
+  'Montar acordo de sócios da 3ª geração': ['SUCESSAO', 'TRIBUTARIO'],
+  'Elevar margem EBITDA de 11% para 15%': ['MARGEM', 'SUPPLY'],
+  'Reduzir ciclo de caixa de 94 para 60 dias': ['GESTAO_CAIXA', 'UNIT_ECONOMICS'],
+  'Margem por projeto de 17% para 24%': ['MARGEM', 'PRICING'],
+  'Validar modelo de franquia em 3 praças-piloto': ['FRANQUIAS'],
+  'Padronizar CMV abaixo de 31% na rede': ['SUPPLY', 'MARGEM'],
+  'Derrubar concentração do maior cliente para 35%': ['OUTBOUND_B2B', 'CANAIS_TRACAO'],
+  'Fechar 8 contratos enterprise novos': ['OUTBOUND_B2B', 'CS_ENTERPRISE'],
+  'Fechar rodada minoritária de R$ 18M': ['CAPTACAO', 'VALUATION'],
+  'Ticket médio de R$ 148 para R$ 190': ['PRICING'],
+  'Trazer o CAC pago de R$ 118 para R$ 74': ['MIDIA_PERFORMANCE', 'UNIT_ECONOMICS'],
+  'Recompra em 90 dias de 18% para 30%': ['RETENCAO'],
+  'Estruturar hedge cambial para 70% das compras': ['TRIBUTARIO', 'GESTAO_CAIXA'],
+  'Abrir operação de exportação para o Paraguai': ['INTERNACIONAL'],
+  'Sair de 41 para 90 contas pagantes': ['OUTBOUND_B2B', 'CANAIS_TRACAO'],
+  'Payback de CAC de 19 para 11 meses': ['UNIT_ECONOMICS', 'PRICING'],
+  'Zerar atraso acima de 30 dias em 4 obras': ['INDUSTRIA_40', 'DADOS_BI'],
+  'Custo por m² 9% abaixo do orçado': ['MARGEM', 'SUPPLY'],
+  'Take rate de 6,2% para 9%': ['TAKE_RATE', 'PRICING'],
+  'Levantar Série A de R$ 25M': ['CAPTACAO', 'VALUATION'],
+  'NPS acima de 70 em todas as 12 unidades': ['CS_ENTERPRISE', 'DADOS_BI'],
+  'Abrir 6 unidades novas no Sul': ['FRANQUIAS'],
+};
+
+function calcularMatch(a, b) {
+  const cobertos = interseccao(a.preciso, b.tenho);
+  const complementaridade = a.preciso.length ? cobertos.length / a.preciso.length : 0;
+
+  const devolvidos = interseccao(b.preciso, a.tenho);
+  const reciprocidade = b.preciso.length ? devolvidos.length / b.preciso.length : 0;
+
+  const escala = fatorEscala(a, b);
+  const setor = fatorSetor(a, b);
+
+  const emRisco = okrsEmRisco(a);
+  const compUrgentes = new Set(emRisco.flatMap((o) => OKR_COMPETENCIA[o.titulo] || []));
+  const urgentesCobertos = cobertos.filter((c) => compUrgentes.has(c));
+  const urgencia = compUrgentes.size ? Math.min(1, urgentesCobertos.length / Math.max(1, compUrgentes.size)) : 0;
+
+  const total =
+    complementaridade * PESOS.complementaridade +
+    reciprocidade * PESOS.reciprocidade +
+    escala * PESOS.escala +
+    setor * PESOS.setor +
+    urgencia * PESOS.urgencia;
+
+  return {
+    total: Math.round(total),
+    cobertos, devolvidos, urgentesCobertos,
+    componentes: [
+      { chave: 'complementaridade', valor: complementaridade, peso: PESOS.complementaridade,
+        rotulo: 'Complementaridade',
+        desc: `${cobertos.length} de ${a.preciso.length} gargalos de ${a.nome.split(' ')[0]} são cobertos` },
+      { chave: 'reciprocidade', valor: reciprocidade, peso: PESOS.reciprocidade,
+        rotulo: 'Reciprocidade',
+        desc: devolvidos.length ? `devolve ${devolvidos.map((c) => COMP[c]).join(', ')}` : 'relação de mão única' },
+      { chave: 'escala', valor: escala, peso: PESOS.escala,
+        rotulo: 'Proximidade de escala',
+        desc: b.escalaAtendida
+          ? `atende de ${brl(b.escalaAtendida[0])} a ${brl(b.escalaAtendida[1])}`
+          : `${brl(a.faturamento)} contra ${brl(b.faturamento)}` },
+      { chave: 'setor', valor: setor, peso: PESOS.setor,
+        rotulo: 'Adjacência setorial',
+        desc: a.setor === b.setor ? 'mesmo setor'
+          : (ADJACENTE[a.setor] || []).includes(b.setor) ? 'setor adjacente'
+          : b.setor === 'MENTORIA' ? 'mentoria transversal' : 'setor distante' },
+      { chave: 'urgencia', valor: urgencia, peso: PESOS.urgencia,
+        rotulo: 'Urgência de OKR',
+        desc: urgentesCobertos.length
+          ? `cobre ${urgentesCobertos.map((c) => COMP[c]).join(', ')} em OKR em risco`
+          : 'nenhum OKR em risco atendido' },
+    ],
+  };
+}
+
+function ranquear(a, universo = USUARIOS) {
+  return universo
+    .filter((b) => b.id !== a.id)
+    .map((b) => ({ alvo: b, match: calcularMatch(a, b) }))
+    .sort((x, y) => y.match.total - x.match.total);
+}
+
+/* ============================================================================
+   6. ESTADO DA SIMULAÇÃO
+   ========================================================================== */
+const estado = {
+  usuarioAtivo: 'u1',
+  fila: [],
+  indiceFila: 0,
+  conexoes: [],   // { de, para, match, nda, aberta }
+  descartes: [],
+  trilhaReordenada: false,
+};
+
+/* ============================================================================
+   MÓDULO 1 — POPULAÇÃO
+   ========================================================================== */
+function renderPopulacao() {
+  const alvo = document.getElementById('m-populacao');
+  const fundadores = USUARIOS.filter((u) => u.papel !== 'MENTOR');
+  const mentores = USUARIOS.filter((u) => u.papel === 'MENTOR');
+  const receitaTotal = fundadores.reduce((s, u) => s + u.faturamento, 0);
+  const okrsRisco = USUARIOS.flatMap((u) => okrsEmRisco(u)).length;
+
+  alvo.innerHTML = `
+    <div class="cabecalho-modulo">
+      <span class="olho">Módulo 01 · População</span>
+      <h2 id="t1">16 empresas reais o bastante para o algoritmo ter o que cruzar</h2>
+      <p>Cada perfil carrega OKRs com prazo e progresso, o que a pessoa <em>tem</em>, o que ela <em>precisa</em>, formação executiva concluída e faturamento. Nada aqui é decorativo — os quatro módulos seguintes leem exatamente estes campos.</p>
+    </div>
+
+    <div class="grade g3" style="margin-bottom:20px">
+      <div class="cartao">
+        <span class="rotulo-peq">Receita sob o ecossistema</span>
+        <div class="num-tese" style="margin-top:6px">${brl(receitaTotal)}</div>
+        <p style="color:var(--neutro);font-size:13px;margin:6px 0 0">${fundadores.length} operações · ${fundadores.reduce((s, u) => s + u.funcionarios, 0).toLocaleString('pt-BR')} colaboradores</p>
+      </div>
+      <div class="cartao">
+        <span class="rotulo-peq">OKRs fora do prazo</span>
+        <div class="num-tese" style="margin-top:6px;color:var(--amarelo)">${okrsRisco}</div>
+        <p style="color:var(--neutro);font-size:13px;margin:6px 0 0">de ${USUARIOS.flatMap((u) => u.okrs).length} metas ativas — é daqui que sai a priorização</p>
+      </div>
+      <div class="cartao">
+        <span class="rotulo-peq">Mentores disponíveis</span>
+        <div class="num-tese" style="margin-top:6px;color:var(--ouro)">${mentores.length}</div>
+        <p style="color:var(--neutro);font-size:13px;margin:6px 0 0">NPS médio ${Math.round(mentores.reduce((s, m) => s + m.nps, 0) / mentores.length)} · faixa de R$ ${Math.min(...mentores.map((m) => m.hora))}–${Math.max(...mentores.map((m) => m.hora))}/h</p>
+      </div>
+    </div>
+
+    <div class="grade g2">
+      ${USUARIOS.map((u) => cartaoPerfil(u)).join('')}
+    </div>
+  `;
+}
+
+function cartaoPerfil(u) {
+  const risco = okrsEmRisco(u).length;
+  return `
+    <article class="cartao">
+      <div class="perfil-topo">
+        <div class="avatar" aria-hidden="true">${iniciais(u.nome)}</div>
+        <div style="min-width:0">
+          <h3 style="font-size:16px;font-weight:650">${esc(u.nome)}</h3>
+          <p style="margin:2px 0 0;font-size:13px;color:var(--neutro)">${esc(u.cargo)} · ${esc(u.empresa)}</p>
+          <p style="margin:2px 0 0;font-size:12px;color:var(--neutro-fraco)">
+            ${SETOR[u.setor]} · ${u.cidade}${u.faturamento ? ` · ${brl(u.faturamento)}/ano` : ' · mentoria'}
+          </p>
+        </div>
+      </div>
+
+      <p style="font-size:13px;color:var(--neutro);margin:12px 0 0">${esc(u.resumo)}</p>
+
+      <div style="margin-top:13px">
+        <span class="rotulo-peq">Tenho</span>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:5px">
+          ${u.tenho.map((c) => `<span class="selo tenho">${COMP[c]}</span>`).join('')}
+        </div>
+      </div>
+      <div style="margin-top:11px">
+        <span class="rotulo-peq">Preciso</span>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:5px">
+          ${u.preciso.map((c) => `<span class="selo preciso">${COMP[c]}</span>`).join('')}
+        </div>
+      </div>
+
+      <div style="margin-top:14px">
+        <span class="rotulo-peq">OKRs do trimestre ${risco ? `· <span style="color:var(--amarelo)">${risco} fora do prazo</span>` : ''}</span>
+        ${u.okrs.map((o) => {
+          const r = riscoOkr(o);
+          return `
+            <div style="margin-top:9px">
+              <div style="display:flex;justify-content:space-between;gap:10px;font-size:13px">
+                <span>${esc(o.titulo)}</span>
+                <span class="componentes peso" style="font-family:var(--fonte-dado);font-size:12px;white-space:nowrap;color:var(--neutro)">${o.progresso}% · ${o.prazoDias}d</span>
+              </div>
+              <div class="barra-fundo" style="margin-top:5px">
+                <div class="barra-preenche ${OKR_CLASSE[r]}" style="width:${o.progresso}%"></div>
+              </div>
+              <span style="font-size:11px;color:var(--neutro-fraco)">${esc(o.metrica)} — ${OKR_ROTULO[r]}</span>
+            </div>`;
+        }).join('')}
+      </div>
+
+      <div style="margin-top:13px">
+        <span class="rotulo-peq">Formação executiva concluída</span>
+        <p style="margin:4px 0 0;font-size:12.5px;color:var(--neutro)">${u.formacao.map(esc).join(' · ')}</p>
+      </div>
+    </article>`;
+}
+
+/* ============================================================================
+   MÓDULO 2 — DECK DE MATCH E SALA DE NEGOCIAÇÃO
+   ========================================================================== */
+function montarFila() {
+  const eu = porId(estado.usuarioAtivo);
+  estado.fila = ranquear(eu);
+  estado.indiceFila = 0;
+  logIA('MATCH', `Fila recalculada para <b>${esc(eu.nome)}</b>: ${estado.fila.length} perfis ordenados por complementaridade. Topo: <b>${esc(estado.fila[0].alvo.nome)}</b> com <span class="val">${estado.fila[0].match.total}</span> pontos.`, 'calculo');
+}
+
+function renderMatch() {
+  const alvo = document.getElementById('m-match');
+  const eu = porId(estado.usuarioAtivo);
+  const atual = estado.fila[estado.indiceFila];
+
+  alvo.innerHTML = `
+    <div class="cabecalho-modulo">
+      <span class="olho">Módulo 02 · Match por complementaridade</span>
+      <h2 id="t2">O match não é afinidade. É uma conta.</h2>
+      <p>Cinco componentes ponderados decidem a ordem da fila. O painel à direita mostra a nota de cada um para o perfil na tela — é a mesma conta que o sistema roda, exposta.</p>
+    </div>
+
+    <label class="campo" style="max-width:420px">
+      <span>Operando como</span>
+      <select id="sel-usuario">
+        ${USUARIOS.filter((u) => u.papel !== 'MENTOR').map((u) =>
+          `<option value="${u.id}" ${u.id === estado.usuarioAtivo ? 'selected' : ''}>${esc(u.nome)} — ${esc(u.empresa)} (${brl(u.faturamento)})</option>`).join('')}
+      </select>
+    </label>
+
+    <div class="deck">
+      <div id="area-deck">${atual ? cartaoDeck(eu, atual) : filaVazia()}</div>
+      <div id="area-conexoes">${painelConexoes()}</div>
+    </div>
+  `;
+
+  document.getElementById('sel-usuario').addEventListener('change', (e) => {
+    estado.usuarioAtivo = e.target.value;
+    montarFila();
+    renderMatch();
+    renderLxp();
+    renderFeed();
+    renderContratos();
+  });
+
+  const sim = document.getElementById('btn-sim');
+  const nao = document.getElementById('btn-nao');
+  if (sim) sim.addEventListener('click', () => decidir(true));
+  if (nao) nao.addEventListener('click', () => decidir(false));
+}
+
+function filaVazia() {
+  return `<div class="cartao"><p class="lista-vazia">A fila acabou. Troque de usuário no seletor acima ou reinicie a simulação para percorrer de novo.</p></div>`;
+}
+
+function cartaoDeck(eu, item) {
+  const b = item.alvo;
+  const m = item.match;
+  return `
+    <article class="cartao">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+        <div class="perfil-topo">
+          <div class="avatar" aria-hidden="true">${iniciais(b.nome)}</div>
+          <div>
+            <h3 style="font-size:18px;font-weight:650">${esc(b.nome)}</h3>
+            <p style="margin:2px 0 0;font-size:13px;color:var(--neutro)">${esc(b.cargo)} · ${esc(b.empresa)}</p>
+            <p style="margin:2px 0 0;font-size:12px;color:var(--neutro-fraco)">${SETOR[b.setor]} · ${b.cidade}${b.faturamento ? ` · ${brl(b.faturamento)}/ano` : ''}</p>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div class="num-tese" style="color:var(--ouro)">${m.total}</div>
+          <span class="rotulo-peq">de 100</span>
+        </div>
+      </div>
+
+      <p style="font-size:13.5px;color:var(--neutro);margin:14px 0 0">${esc(b.resumo)}</p>
+
+      <div style="margin-top:14px">
+        <span class="rotulo-peq">Cobre destes seus gargalos</span>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:5px">
+          ${m.cobertos.length
+            ? m.cobertos.map((c) => `<span class="selo casa">${COMP[c]}</span>`).join('')
+            : '<span class="lista-vazia">nenhum — o algoritmo mantém na fila só pela reciprocidade e escala</span>'}
+        </div>
+      </div>
+
+      <div style="margin-top:12px">
+        <span class="rotulo-peq">E precisa do que você tem</span>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:5px">
+          ${m.devolvidos.length
+            ? m.devolvidos.map((c) => `<span class="selo tenho">${COMP[c]}</span>`).join('')
+            : '<span class="lista-vazia">nada — relação de mão única</span>'}
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:20px">
+        <button class="btn" id="btn-nao" style="flex:1">Passar</button>
+        <button class="btn btn-ouro" id="btn-sim" style="flex:1">Conectar</button>
+      </div>
+      <p style="font-size:11.5px;color:var(--neutro-fraco);margin:9px 0 0;text-align:center">
+        Perfil ${estado.indiceFila + 1} de ${estado.fila.length} · use ← e → no teclado
+      </p>
+
+      <hr style="border:none;border-top:1px solid var(--linha-fraca);margin:18px 0">
+
+      <span class="rotulo-peq">Decomposição da nota</span>
+      <ul class="componentes" style="margin-top:8px">
+        ${m.componentes.map((c) => `
+          <li>
+            <span style="font-size:13.5px">${c.rotulo}</span>
+            <span class="peso">${Math.round(c.valor * c.peso)}/${c.peso}</span>
+            <div class="barra-fundo" style="grid-column:1/-1;margin-top:4px">
+              <div class="barra-preenche" style="width:${Math.round(c.valor * 100)}%"></div>
+            </div>
+            <span class="desc">${esc(c.desc)}</span>
+          </li>`).join('')}
+      </ul>
+    </article>`;
+}
+
+/**
+ * O outro lado também decide — mas não pelo mesmo critério.
+ *
+ * A primeira versão rodava a fórmula simétrica nos dois sentidos, e o
+ * resultado era absurdo: Helena Prado, mentora de growth, pontuava 78 para
+ * Marina e recusava com 38. A mentora cujo negócio inteiro é ser contratada
+ * rejeitava a cliente ideal, porque a fórmula perguntava a ela "o que você
+ * ganha de competência em troca?" — pergunta que não faz sentido para quem
+ * vende hora.
+ *
+ * Então o aceite tem dois critérios, um por tipo de relação:
+ *
+ *  MENTOR  aceita quando cobre pelo menos um gargalo declarado e o cliente
+ *          está dentro da faixa de faturamento que ele atende. É literalmente
+ *          a qualificação comercial que um mentor faz na primeira conversa.
+ *
+ *  PAR     aceita pela nota inversa acima de 30. Entre pares não existe quem
+ *          vende: a relação só se sustenta se os dois lados ganham, e a
+ *          reciprocidade já pesa dentro dessa nota.
+ */
+function avaliarAceite(alvo, solicitante) {
+  const nota = calcularMatch(alvo, solicitante);
+
+  if (alvo.papel === 'MENTOR') {
+    const cobre = interseccao(solicitante.preciso, alvo.tenho);
+    const escala = fatorEscala(solicitante, alvo);
+    const aceita = cobre.length >= 1 && escala >= 0.5;
+    return {
+      aceita, nota,
+      criterio: 'qualificação de mentoria',
+      motivo: aceita
+        ? `cobre ${cobre.map((c) => COMP[c]).join(', ')} e ${brl(solicitante.faturamento)} cai dentro da faixa atendida`
+        : cobre.length === 0
+          ? 'não domina nenhum dos gargalos declarados'
+          : `${brl(solicitante.faturamento)} está fora da faixa de ${brl(alvo.escalaAtendida[0])} a ${brl(alvo.escalaAtendida[1])}`,
+    };
+  }
+
+  const aceita = nota.total >= 30;
+  return {
+    aceita, nota,
+    criterio: 'reciprocidade entre pares',
+    motivo: aceita
+      ? `nota inversa ${nota.total} — ganha ${nota.cobertos.map((c) => COMP[c]).join(', ') || 'contexto de escala'} na troca`
+      : motivoRecusa(nota),
+  };
+}
+function decidir(aceitou) {
+  const eu = porId(estado.usuarioAtivo);
+  const item = estado.fila[estado.indiceFila];
+  if (!item) return;
+  const b = item.alvo;
+
+  if (!aceitou) {
+    estado.descartes.push({ de: eu.id, para: b.id });
+    logIA('MATCH', `<b>${esc(eu.nome)}</b> passou de <b>${esc(b.nome)}</b>. O perfil sai da fila e os pesos não mudam — descarte não é sinal negativo de competência, só de momento.`);
+    avancar();
+    return;
+  }
+
+  const veredito = avaliarAceite(b, eu);
+  const inverso = veredito.nota;
+  logIA('MATCH', `Opt-in de <b>${esc(eu.nome)}</b> registrado. Avaliando <b>${esc(b.nome)}</b> por <b>${veredito.criterio}</b> — nota inversa <span class="val">${inverso.total}</span>.`, 'calculo');
+
+  if (veredito.aceita) {
+    const nda = gerarNda(eu, b, item.match);
+    estado.conexoes.unshift({ de: eu.id, para: b.id, match: item.match, inverso, nda, aberta: true });
+    logIA('SALA', `Aceite de <b>${esc(b.nome)}</b>: ${veredito.motivo}. Sala aberta entre <b>${esc(eu.empresa)}</b> e <b>${esc(b.empresa)}</b> com NDA pré-assinado — objeto: ${item.match.cobertos.map((c) => COMP[c]).join(', ') || 'troca de contexto'}.`, 'decisao');
+  } else {
+    logIA('MATCH', `<b>${esc(b.nome)}</b> recusou: ${veredito.motivo}. Nenhuma sala é aberta — dupla opt-in significa que um lado querendo não basta.`, 'calculo');
+  }
+  avancar();
+}
+
+function motivoRecusa(m) {
+  const pior = [...m.componentes].sort((a, b) => a.valor - b.valor)[0];
+  return `${pior.rotulo.toLowerCase()} em ${pct(pior.valor)} (${pior.desc})`;
+}
+
+function avancar() {
+  estado.indiceFila += 1;
+  const eu = porId(estado.usuarioAtivo);
+  const atual = estado.fila[estado.indiceFila];
+  document.getElementById('area-deck').innerHTML = atual ? cartaoDeck(eu, atual) : filaVazia();
+  document.getElementById('area-conexoes').innerHTML = painelConexoes();
+  const sim = document.getElementById('btn-sim');
+  const nao = document.getElementById('btn-nao');
+  if (sim) sim.addEventListener('click', () => decidir(true));
+  if (nao) nao.addEventListener('click', () => decidir(false));
+  ligarBotoesSala();
+}
+
+function painelConexoes() {
+  if (!estado.conexoes.length) {
+    return `<div class="cartao">
+      <span class="rotulo-peq">Salas de negociação</span>
+      <p class="lista-vazia" style="margin-top:8px">Nenhuma sala aberta. Dê "Conectar" num perfil com nota alta — a sala só abre quando o outro lado também aceita.</p>
+    </div>`;
+  }
+  return estado.conexoes.map((c, i) => {
+    const de = porId(c.de), para = porId(c.para);
+    return `<div class="cartao" style="margin-bottom:${i === estado.conexoes.length - 1 ? 0 : 'var(--gap)'}">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <div>
+          <span class="rotulo-peq">Sala aberta</span>
+          <h3 style="font-size:15px;font-weight:650;margin-top:3px">${esc(de.empresa)} ⇄ ${esc(para.empresa)}</h3>
+        </div>
+        <span class="selo casa">${c.match.total} / ${c.inverso.total}</span>
+      </div>
+      <p style="font-size:12.5px;color:var(--neutro);margin:9px 0 0">
+        Objeto: ${c.match.cobertos.map((x) => COMP[x]).join(', ') || 'troca de contexto'}.
+        Contrapartida: ${c.match.devolvidos.map((x) => COMP[x]).join(', ') || 'a definir na sala'}.
+      </p>
+      <button class="btn btn-peq" style="margin-top:11px" data-nda="${i}">Ver NDA gerado</button>
+      <div class="doc" id="nda-${i}" style="display:none;margin-top:11px">${esc(c.nda)}</div>
+    </div>`;
+  }).join('');
+}
+
+function ligarBotoesSala() {
+  document.querySelectorAll('[data-nda]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const alvo = document.getElementById(`nda-${b.dataset.nda}`);
+      const mostrando = alvo.style.display !== 'none';
+      alvo.style.display = mostrando ? 'none' : 'block';
+      b.textContent = mostrando ? 'Ver NDA gerado' : 'Ocultar NDA';
+      if (!mostrando) logIA('SALA', 'NDA exibido. Documento gerado com as partes, o objeto específico da troca e o OKR em jogo — não é modelo genérico.');
+    });
+  });
+}
+
+/** O NDA cita a troca concreta e o OKR em risco. É o que separa um contrato
+ *  gerado de um modelo preenchido. */
+function gerarNda(a, b, m) {
+  const risco = okrsEmRisco(a)[0];
+  const objeto = m.cobertos.map((c) => COMP[c]).join(', ') || 'troca de contexto estratégico';
+  const contrapartida = m.devolvidos.map((c) => COMP[c]).join(', ') || 'a definir entre as partes';
+  const multa = Math.max(25_000, Math.round((a.faturamento || 1_000_000) * 0.004));
+  const hoje = relogio.toLocaleDateString('pt-BR');
+
+  return `INSTRUMENTO PARTICULAR DE CONFIDENCIALIDADE E NÃO ALICIAMENTO
+Gerado automaticamente pela plataforma em ${hoje} · minuta sujeita a revisão jurídica
+
+DAS PARTES
+I.  ${a.empresa} ("Parte Demandante"), representada por ${a.nome}, ${a.cargo},
+    com sede em ${a.cidade}, faturamento anual declarado de ${brl(a.faturamento)}.
+II. ${b.empresa} ("Parte Contribuinte"), representada por ${b.nome}, ${b.cargo},
+    com sede em ${b.cidade}${b.faturamento ? `, faturamento anual declarado de ${brl(b.faturamento)}` : ', atuação em mentoria executiva'}.
+
+CLÁUSULA 1 — DO OBJETO
+As Partes abrem canal de negociação para troca estruturada de competências,
+especificamente: ${objeto}.
+Como contrapartida, a Parte Demandante disponibiliza: ${contrapartida}.
+
+CLÁUSULA 2 — DO CONTEXTO DECLARADO
+A Parte Demandante declara que a troca visa destravar o seguinte resultado-chave:
+"${risco ? risco.titulo : a.okrs[0].titulo}"
+métrica: ${risco ? risco.metrica : a.okrs[0].metrica} · prazo remanescente: ${risco ? risco.prazoDias : a.okrs[0].prazoDias} dias
+situação atual: ${risco ? OKR_ROTULO[riscoOkr(risco)] : 'no prazo'}, com ${risco ? risco.progresso : a.okrs[0].progresso}% de progresso.
+
+CLÁUSULA 3 — DA CONFIDENCIALIDADE
+Toda informação trocada neste canal — números de faturamento, margem, carteira de
+clientes, estrutura societária, metas e documentos anexados — é confidencial pelo
+prazo de 24 (vinte e quatro) meses contados desta data, sobrevivendo ao término
+da negociação, independentemente do motivo.
+
+CLÁUSULA 4 — DA NÃO CIRCUNVENÇÃO
+As Partes não abordarão diretamente clientes, fornecedores ou colaboradores
+identificados exclusivamente em razão desta negociação, pelo mesmo prazo da
+Cláusula 3, sem anuência escrita da outra Parte.
+
+CLÁUSULA 5 — DA MULTA
+O descumprimento das Cláusulas 3 ou 4 sujeita a Parte infratora a multa não
+compensatória de ${brl(multa)}, equivalente a 0,4% do faturamento anual declarado
+pela Parte Demandante, sem prejuízo de perdas e danos apurados.
+
+CLÁUSULA 6 — DA SUPERVISÃO DA PLATAFORMA
+As tratativas ocorrem em sala registrada. Qualquer contratação onerosa decorrente
+desta negociação deve ser instrumentada por contrato próprio com retenção de
+valores em custódia, sob pena de perda das garantias oferecidas pela plataforma.
+
+CLÁUSULA 7 — DO FORO
+Fica eleito o foro da comarca de ${a.cidade} para dirimir controvérsias.
+
+${a.nome}                              ${b.nome}
+${a.empresa}                           ${b.empresa}`;
+}
+
+/* ============================================================================
+   MÓDULO 3 — FEED DE INTELIGÊNCIA SINTÉTICA
+   Cada evento macro carrega parâmetros numéricos. O insight não é texto
+   pronto: é o evento aplicado ao setor, ao faturamento e ao ciclo de caixa
+   daquela empresa, com o impacto em reais calculado na hora.
+   ========================================================================== */
+const EVENTOS_MACRO = [
+  {
+    id: 'selic', titulo: 'Selic mantida em 14,25% pela terceira reunião seguida',
+    fonte: 'Copom · decisão de ontem', custoCapital: 0.1425,
+    setores: ['VAREJO', 'INDUSTRIA', 'CONSTRUCAO', 'ALIMENTACAO', 'ENERGIA', 'AGRO', 'MODA', 'LOGISTICA', 'SAUDE'],
+    impacto(u) {
+      const cicloDias = { CONSTRUCAO: 120, INDUSTRIA: 84, AGRO: 110, VAREJO: 52, ALIMENTACAO: 38, ENERGIA: 94, MODA: 66, LOGISTICA: 47, SAUDE: 58 }[u.setor] || 60;
+      const giro = (u.faturamento / 365) * cicloDias;
+      const custo = giro * this.custoCapital;
+      return {
+        numero: custo,
+        texto: `Com ciclo de caixa típico de ${cicloDias} dias no seu setor, ${esc(u.empresa)} carrega cerca de ${brl(giro)} imobilizados em capital de giro. A a taxa atual, isso custa ${brl(custo)} por ano — ${pct(custo / u.faturamento, 1)} do faturamento, antes de qualquer venda.`,
+        acao: `Renegociar prazo com os 5 maiores fornecedores. Cada 10 dias a mais de prazo devolvem ${brl((u.faturamento / 365) * 10 * this.custoCapital)} ao ano.`,
+      };
+    },
+  },
+  {
+    id: 'cambio', titulo: 'Dólar fecha a R$ 5,84 após três semanas de alta',
+    fonte: 'Fechamento de câmbio', alta: 0.071,
+    setores: ['AGRO', 'INDUSTRIA', 'MODA', 'ENERGIA', 'MARKETPLACE', 'SAAS'],
+    impacto(u) {
+      const expo = { AGRO: 0.62, INDUSTRIA: 0.41, MODA: 0.34, ENERGIA: 0.55, MARKETPLACE: 0.18, SAAS: 0.12 }[u.setor] || 0.15;
+      const custo = u.faturamento * expo * this.alta;
+      return {
+        numero: custo,
+        texto: `Sua estrutura de custos tem cerca de ${pct(expo)} atrelada ao dólar. A alta de ${pct(this.alta, 1)} no período representa ${brl(custo)} de custo adicional anualizado se nada for travado.`,
+        acao: `Travar hedge para os próximos dois trimestres da parcela dolarizada. Protegendo 70%, a exposição residual cai para ${brl(custo * 0.3)}.`,
+      };
+    },
+  },
+  {
+    id: 'credito', titulo: 'Spread de crédito PJ para médias empresas sobe 1,8 p.p.',
+    fonte: 'Boletim de crédito', spread: 0.018,
+    setores: ['CONSTRUCAO', 'INDUSTRIA', 'LOGISTICA', 'SAUDE', 'ALIMENTACAO', 'ENERGIA'],
+    impacto(u) {
+      const alavanca = u.faturamento * 0.35;
+      const custo = alavanca * this.spread;
+      return {
+        numero: custo,
+        texto: `Empresas do seu porte e setor operam com endividamento médio de 35% do faturamento — ${brl(alavanca)} no seu caso. O aumento de spread adiciona ${brl(custo)} por ano ao serviço da dívida.`,
+        acao: `Antecipar a rolagem das linhas que vencem em até 120 dias antes do repasse completo do spread.`,
+      };
+    },
+  },
+  {
+    id: 'concentracao', titulo: 'Concentração de receita entra no radar dos comitês de crédito',
+    fonte: 'Análise da plataforma', limite: 0.4,
+    setores: ['LOGISTICA', 'INDUSTRIA', 'SAAS', 'MARKETPLACE', 'CONSTRUCAO'],
+    impacto(u) {
+      const conc = { LOGISTICA: 0.71, INDUSTRIA: 0.38, SAAS: 0.22, MARKETPLACE: 0.29, CONSTRUCAO: 0.44 }[u.setor] || 0.3;
+      const risco = u.faturamento * Math.max(0, conc - this.limite);
+      return {
+        numero: risco,
+        texto: `Sua faixa apresenta concentração média de ${pct(conc)} no maior cliente. Acima de ${pct(this.limite)}, bancos passam a exigir garantia real. A receita exposta acima do limite é ${brl(risco)}.`,
+        acao: `Colocar meta explícita de diluição no trimestre — cada ponto percentual abaixo de ${pct(this.limite)} libera limite de crédito sem garantia adicional.`,
+      };
+    },
+  },
+  {
+    id: 'reforma', titulo: 'Transição da reforma tributária: split payment começa a valer para serviços',
+    fonte: 'Regulamentação publicada', retencao: 0.087,
+    setores: ['SAAS', 'EDTECH', 'SAUDE', 'MARKETPLACE', 'LOGISTICA'],
+    impacto(u) {
+      const retido = u.faturamento * this.retencao;
+      return {
+        numero: retido,
+        texto: `No modelo de recolhimento na liquidação, ${brl(retido)} por ano deixam de transitar pelo seu caixa antes do recolhimento. Não é custo novo — é ${Math.round((this.retencao * 365) / 12 * 3)} dias de float que somem do fluxo.`,
+        acao: `Refazer a projeção de caixa dos próximos dois trimestres já sem o float e revisar a política de desconto por antecipação.`,
+      };
+    },
+  },
+];
+
+function insightsPara(u) {
+  return EVENTOS_MACRO
+    .filter((e) => e.setores.includes(u.setor))
+    .map((e) => ({ evento: e, resultado: e.impacto(u) }))
+    .sort((a, b) => b.resultado.numero - a.resultado.numero);
+}
+
+function renderFeed() {
+  const alvo = document.getElementById('m-feed');
+  const u = porId(estado.usuarioAtivo);
+  const itens = insightsPara(u);
+  const exposicao = itens.reduce((s, i) => s + i.resultado.numero, 0);
+
+  alvo.innerHTML = `
+    <div class="cabecalho-modulo">
+      <span class="olho">Módulo 03 · Inteligência sintética</span>
+      <h2 id="t3">O mesmo fato macro, traduzido no caixa de cada empresa</h2>
+      <p>Cinco eventos macro são filtrados pelo setor de ${esc(u.nome)} e aplicados ao faturamento de ${brl(u.faturamento)} e ao ciclo de caixa típico do ramo. O número em cada card é calculado, não escrito.</p>
+    </div>
+
+    <div class="cartao" style="margin-bottom:20px;border-color:var(--ouro)">
+      <span class="rotulo-peq">Exposição somada identificada hoje para ${esc(u.empresa)}</span>
+      <div class="num-tese" style="color:var(--ouro);margin-top:6px">${brl(exposicao)}</div>
+      <p style="color:var(--neutro);font-size:13px;margin:6px 0 0">
+        ${pct(exposicao / u.faturamento, 1)} do faturamento anual · ${itens.length} eventos relevantes de ${EVENTOS_MACRO.length} monitorados
+      </p>
+    </div>
+
+    <div class="grade" style="gap:var(--gap)">
+      ${itens.map((i, idx) => `
+        <article class="cartao">
+          <div style="display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap">
+            <div style="min-width:240px;flex:1">
+              <span class="rotulo-peq">${esc(i.evento.fonte)}</span>
+              <h3 style="font-size:17px;font-weight:650;margin-top:4px">${esc(i.evento.titulo)}</h3>
+            </div>
+            <div style="text-align:right">
+              <div class="num-tese" style="font-size:23px">${brl(i.resultado.numero)}</div>
+              <span class="rotulo-peq">impacto anual</span>
+            </div>
+          </div>
+          <p style="font-size:13.5px;color:var(--neutro);margin:12px 0 0">${i.resultado.texto}</p>
+          <div style="display:flex;gap:9px;margin-top:14px;flex-wrap:wrap">
+            <button class="btn btn-peq" data-plano="${idx}">Gerar plano de ação por IA</button>
+            <button class="btn btn-peq" data-emergencia="${idx}">Agendar reunião de emergência</button>
+          </div>
+          <div id="saida-feed-${idx}" style="margin-top:13px"></div>
+        </article>`).join('')}
+    </div>
+  `;
+
+  document.querySelectorAll('[data-plano]').forEach((b) =>
+    b.addEventListener('click', () => gerarPlano(Number(b.dataset.plano), itens)));
+  document.querySelectorAll('[data-emergencia]').forEach((b) =>
+    b.addEventListener('click', () => agendarEmergencia(Number(b.dataset.emergencia), itens)));
+}
+
+function gerarPlano(idx, itens) {
+  const u = porId(estado.usuarioAtivo);
+  const item = itens[idx];
+  const base = item.resultado.numero;
+  const passos = [
+    { o: 'Semana 1', q: item.resultado.acao, dono: u.cargo, ganho: base * 0.35 },
+    { o: 'Semana 2', q: 'Levantar os 3 contratos de maior exposição e marcar renegociação com cláusula de revisão trimestral.', dono: 'Controladoria', ganho: base * 0.22 },
+    { o: 'Semana 4', q: `Instalar acompanhamento semanal da métrica no comitê — hoje ela não aparece no ritual de gestão de ${esc(u.empresa)}.`, dono: u.papel === 'FUNDADOR' ? 'CEO' : 'Diretoria', ganho: base * 0.18 },
+    { o: 'Semana 8', q: 'Reavaliar e decidir entre travar definitivamente ou aceitar a exposição residual como custo de operação.', dono: 'Conselho', ganho: base * 0.11 },
+  ];
+  const recuperavel = passos.reduce((s, p) => s + p.ganho, 0);
+
+  document.getElementById(`saida-feed-${idx}`).innerHTML = `
+    <div style="border:1px solid var(--ouro);border-radius:8px;padding:14px">
+      <span class="rotulo-peq" style="color:var(--ouro)">Plano gerado · horizonte de 8 semanas</span>
+      <div class="rolagem" style="margin-top:8px">
+        <table>
+          <thead><tr><th>Quando</th><th>O quê</th><th>Dono</th><th style="text-align:right">Recupera</th></tr></thead>
+          <tbody>
+            ${passos.map((p) => `<tr>
+              <td class="n">${p.o}</td>
+              <td>${p.q}</td>
+              <td>${esc(p.dono)}</td>
+              <td class="n" style="text-align:right">${brl(p.ganho)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:13px;color:var(--neutro);margin:11px 0 0">
+        Recuperação estimada: <b style="color:var(--ouro-claro)">${brl(recuperavel)}</b> de ${brl(base)} expostos —
+        ${pct(recuperavel / base)} da exposição. O residual é o custo de operar no cenário.
+      </p>
+    </div>`;
+
+  logIA('FEED', `Plano gerado para <b>${esc(u.empresa)}</b> sobre "${esc(item.evento.titulo)}". Exposição <span class="val">${brl(base)}</span>, recuperação modelada <span class="val">${brl(recuperavel)}</span> em 4 movimentos com dono definido.`, 'calculo');
+}
+
+function agendarEmergencia(idx, itens) {
+  const u = porId(estado.usuarioAtivo);
+  const item = itens[idx];
+  const mentores = USUARIOS.filter((m) => m.papel === 'MENTOR');
+  const ranking = mentores
+    .map((m) => ({ m, nota: calcularMatch(u, m).total, dist: distanciaKm(CIDADES[u.cidade], CIDADES[m.cidade]) }))
+    .sort((a, b) => b.nota - a.nota);
+  const escolhido = ranking[0];
+  const presencial = escolhido.dist <= 120;
+
+  document.getElementById(`saida-feed-${idx}`).innerHTML = `
+    <div style="border:1px solid var(--linha);border-radius:8px;padding:14px">
+      <span class="rotulo-peq">Mentor acionado pelo mesmo algoritmo de match</span>
+      <div class="perfil-topo" style="margin-top:10px">
+        <div class="avatar" aria-hidden="true">${iniciais(escolhido.m.nome)}</div>
+        <div>
+          <h4 style="font-size:15px;font-weight:650;margin:0">${esc(escolhido.m.nome)}</h4>
+          <p style="margin:2px 0 0;font-size:12.5px;color:var(--neutro)">${esc(escolhido.m.resumo)}</p>
+          <p style="margin:4px 0 0;font-size:12px;color:var(--neutro-fraco)">
+            nota ${escolhido.nota}/100 · ${escolhido.dist} km de ${esc(u.cidade)} · ${brlCent(escolhido.m.hora)}/h · NPS ${escolhido.m.nps}
+          </p>
+        </div>
+      </div>
+      <p style="font-size:13px;color:var(--neutro);margin:12px 0 0">
+        Formato recomendado: <b>${presencial ? 'presencial' : 'videochamada'}</b> —
+        ${presencial ? `${escolhido.dist} km permitem encontro no mesmo dia.` : `${escolhido.dist} km inviabilizam presencial em regime de emergência.`}
+      </p>
+      <div class="rolagem" style="margin-top:10px">
+        <table>
+          <thead><tr><th>Janela</th><th>Formato</th><th style="text-align:right">Custo da sessão</th></tr></thead>
+          <tbody>
+            <tr><td class="n">Hoje, 17h30</td><td>Videochamada · 60 min</td><td class="n" style="text-align:right">${brlCent(escolhido.m.hora)}</td></tr>
+            <tr><td class="n">Amanhã, 08h00</td><td>${presencial ? 'Presencial · 90 min' : 'Videochamada · 90 min'}</td><td class="n" style="text-align:right">${brlCent(escolhido.m.hora * 1.5)}</td></tr>
+            <tr><td class="n">Sexta, 14h00</td><td>Videochamada · 60 min</td><td class="n" style="text-align:right">${brlCent(escolhido.m.hora)}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+
+  logIA('MENTORIA', `Emergência para <b>${esc(u.empresa)}</b>: <b>${esc(escolhido.m.nome)}</b> selecionado com nota <span class="val">${escolhido.nota}</span>, à frente de ${esc(ranking[1].m.nome)} (${ranking[1].nota}). Distância <span class="val">${escolhido.dist} km</span> → formato ${presencial ? 'presencial' : 'remoto'}.`, 'calculo');
+}
+
+/* ============================================================================
+   MÓDULO 4 — ANÁLISE DE CONTRATOS CONDICIONAIS
+   Cláusulas carregam gatilhos legíveis por máquina. A condição digitada é
+   interpretada e confrontada com cada gatilho; o que dispara vira exposição
+   em reais calculada sobre o faturamento real da empresa ativa.
+   ========================================================================== */
+const DOCUMENTOS = [
+  {
+    id: 'fornecimento', nome: 'Contrato de fornecimento — Vale Verde Indústria (36 meses)',
+    clausulas: [
+      { id: '4.1', titulo: 'Volume mínimo garantido', gatilho: { tipo: 'faturamento', direcao: 'queda', limiar: 0.10 },
+        texto: 'A CONTRATANTE compromete-se a adquirir volume mínimo mensal equivalente a 82% da média dos últimos 12 meses, independentemente de sua demanda efetiva.',
+        exposicao: (u, mag) => u.faturamento * 0.28 * Math.max(0, mag - 0.18) * 12 / 12,
+        analise: (u, mag) => `Se a receita cair ${pct(mag)}, a demanda real cai junto, mas a obrigação de compra permanece em 82%. A diferença entre o que você precisa e o que é obrigado a comprar vira estoque parado — e o contrato não tem cláusula de renegociação por queda de demanda.` },
+      { id: '7.3', titulo: 'Reajuste por índice cheio', gatilho: { tipo: 'faturamento', direcao: 'queda', limiar: 0.05 },
+        texto: 'Os preços serão reajustados anualmente pelo IPCA integral, vedada a repactuação por alteração das condições de mercado.',
+        exposicao: (u) => u.faturamento * 0.28 * 0.047,
+        analise: () => 'O reajuste é automático e não admite repactuação. Numa queda de receita, o custo unitário sobe enquanto a diluição de custo fixo piora — as duas curvas andam contra você ao mesmo tempo.' },
+      { id: '9.2', titulo: 'Rescisão com multa proporcional ao remanescente', gatilho: { tipo: 'faturamento', direcao: 'queda', limiar: 0.20 },
+        texto: 'A rescisão imotivada sujeita a parte denunciante a multa de 30% sobre o valor remanescente do contrato.',
+        exposicao: (u) => u.faturamento * 0.28 * 1.5 * 0.30,
+        analise: () => 'Esta é a cláusula que fecha a armadilha: quando a queda justifica sair, sair custa 30% de tudo que faltava. A saída fica mais cara do que aguentar o contrato ruim, que é exatamente o desenho que ninguém quer descobrir depois.' },
+      { id: '12.1', titulo: 'Exclusividade de fornecimento', gatilho: { tipo: 'faturamento', direcao: 'queda', limiar: 0.15 },
+        texto: 'A CONTRATANTE não poderá adquirir produtos da mesma natureza de terceiros durante a vigência.',
+        exposicao: (u) => u.faturamento * 0.28 * 0.09,
+        analise: () => 'Com exclusividade, você não pode buscar preço melhor justamente no momento em que mais precisa. O custo é a diferença entre o preço travado e o de mercado.' },
+      { id: '15.4', titulo: 'Foro e arbitragem em câmara privada', gatilho: { tipo: 'inadimplencia', direcao: 'alta', limiar: 0.01 },
+        texto: 'Controvérsias serão dirimidas por arbitragem em câmara privada, com custas rateadas.',
+        exposicao: () => 180_000,
+        analise: () => 'Arbitragem tem custo de entrada alto e fixo. Para disputas de valor médio, o custo do procedimento pode superar o valor discutido — na prática, inibe a contestação.' },
+    ],
+  },
+  {
+    id: 'saas', nome: 'Contrato SaaS enterprise — cliente âncora (24 meses)',
+    clausulas: [
+      { id: '3.2', titulo: 'SLA com desconto escalonado', gatilho: { tipo: 'atraso', direcao: 'alta', limiar: 0.02 },
+        texto: 'Indisponibilidade acima de 0,5% mensal gera desconto de 10% na mensalidade; acima de 2%, desconto de 40%.',
+        exposicao: (u) => u.faturamento * 0.31 * 0.40,
+        analise: (u) => `O cliente âncora representa parte relevante da receita de ${esc(u.empresa)}. Um trimestre ruim de disponibilidade não gera multa — gera desconto recorrente sobre a maior linha de receita.` },
+      { id: '6.1', titulo: 'Rescisão por conveniência com 30 dias', gatilho: { tipo: 'faturamento', direcao: 'queda', limiar: 0.05 },
+        texto: 'O CLIENTE poderá rescindir por conveniência mediante aviso de 30 dias, sem multa.',
+        exposicao: (u) => u.faturamento * 0.31,
+        analise: () => 'Assimetria pura: o cliente sai em 30 dias sem custo, você tem obrigações de 24 meses. Toda a receita do contrato é, na prática, receita mensal disfarçada de contrato anual — e é assim que um investidor vai enxergar na diligência.' },
+      { id: '8.5', titulo: 'Mudança de controle', gatilho: { tipo: 'controle', direcao: 'alta', limiar: 0.01 },
+        texto: 'A alteração do controle societário do FORNECEDOR confere ao CLIENTE direito de rescisão imediata.',
+        exposicao: (u) => u.faturamento * 0.31 * 0.5,
+        analise: () => 'Numa venda da empresa, o maior contrato pode evaporar no dia do anúncio. Isso entra direto no valuation como desconto de risco — é a cláusula que o comprador acha na diligência e usa para renegociar preço.' },
+      { id: '11.2', titulo: 'Propriedade de customizações', gatilho: { tipo: 'faturamento', direcao: 'alta', limiar: 0.10 },
+        texto: 'Desenvolvimentos específicos solicitados pelo CLIENTE serão de titularidade exclusiva deste.',
+        exposicao: (u) => u.faturamento * 0.06,
+        analise: () => 'Você constrói e o cliente é dono. Cada customização feita para crescer nesta conta é produto que não pode ser revendido — cresce a receita e encolhe o ativo.' },
+    ],
+  },
+  {
+    id: 'ma', nome: 'Term sheet — aquisição minoritária (18%)',
+    clausulas: [
+      { id: '2.4', titulo: 'Earn-out condicionado a EBITDA', gatilho: { tipo: 'faturamento', direcao: 'queda', limiar: 0.08 },
+        texto: '40% do preço fica condicionado ao atingimento de EBITDA projetado nos 24 meses seguintes.',
+        exposicao: (u) => u.faturamento * 1.8 * 0.18 * 0.40,
+        analise: () => 'Quase metade do preço não é preço, é aposta. Uma queda de receita não reduz proporcionalmente o earn-out: ela costuma zerá-lo, porque o EBITDA cai mais rápido que a receita quando o custo fixo não acompanha.' },
+      { id: '5.1', titulo: 'Preferência de liquidação 1x preferencial', gatilho: { tipo: 'controle', direcao: 'alta', limiar: 0.01 },
+        texto: 'Em evento de liquidez, o INVESTIDOR receberá o valor aportado antes de qualquer distribuição aos fundadores.',
+        exposicao: (u) => u.faturamento * 1.8 * 0.18,
+        analise: () => 'Numa saída abaixo do esperado, o investidor recebe primeiro e integralmente. Existe uma faixa de preço de venda em que o fundador não recebe nada — e ela é maior do que parece.' },
+      { id: '7.2', titulo: 'Veto sobre orçamento e contratações de liderança', gatilho: { tipo: 'faturamento', direcao: 'queda', limiar: 0.12 },
+        texto: 'O INVESTIDOR terá direito de veto sobre o orçamento anual e a contratação de C-level.',
+        exposicao: (u) => u.faturamento * 0.04,
+        analise: () => 'Com 18% do capital, o investidor decide sobre 100% do orçamento. O custo não aparece em nenhuma linha — aparece na velocidade das decisões durante uma crise, que é quando velocidade vale mais.' },
+      { id: '9.6', titulo: 'Cláusula de não-competição de 5 anos', gatilho: { tipo: 'controle', direcao: 'alta', limiar: 0.01 },
+        texto: 'Os FUNDADORES não poderão atuar no mesmo segmento por 5 anos após a saída, em todo o território nacional.',
+        exposicao: () => 0,
+        analise: () => 'Cinco anos e abrangência nacional é prazo que tribunais frequentemente reduzem, mas discutir isso custa tempo e dinheiro. O impacto não é financeiro direto — é sobre o que você pode fazer depois.' },
+    ],
+  },
+];
+
+/**
+ * Interpreta a condição digitada em linguagem natural.
+ *
+ * A direção não pode ter um default único. "Se o faturamento cair" e "se
+ * houver mudança de controle" são frases de formato diferente: a primeira
+ * nomeia o movimento, a segunda só nomeia o evento — não existe "controle
+ * caindo". Assumir queda para todos fazia as cláusulas de controle, de SLA e
+ * de inadimplência nunca dispararem, e o relatório saía zerado justamente nos
+ * cenários mais graves. O default passa a vir do tipo.
+ */
+const DIRECAO_PADRAO = {
+  faturamento: 'queda',   // o cenário de risco de receita é a queda
+  atraso: 'alta',         // atraso e indisponibilidade só existem subindo
+  inadimplencia: 'alta',
+  controle: 'alta',       // o evento ocorrendo, não uma grandeza variando
+};
+
+function interpretarCondicao(txt) {
+  const t = txt.toLowerCase();
+  let direcao = null;
+  if (/\b(cair|queda|cai|redu|diminu|perde|baix)/.test(t)) direcao = 'queda';
+  if (/\b(subir|sobe|alta|aument|cresc|dobr)/.test(t)) direcao = 'alta';
+
+  let tipo = null;
+  if (/controle|vender a empresa|s[óo]cio|aquisi|comprad|fus[ãa]o/.test(t)) tipo = 'controle';
+  else if (/inadimpl|calote|n[ãa]o pag/.test(t)) tipo = 'inadimplencia';
+  else if (/atras|prazo|entrega|indisponib|sla|fora do ar|queda de servi/.test(t)) tipo = 'atraso';
+  else if (/fatur|receita|venda|billing|arr|mrr|d[óo]lar|c[âa]mbio|moeda/.test(t)) tipo = 'faturamento';
+
+  const m = t.match(/(\d+(?:[.,]\d+)?)\s*%/);
+  const magnitude = m ? parseFloat(m[1].replace(',', '.')) / 100 : 0.20;
+
+  const tipoFinal = tipo || 'faturamento';
+  return {
+    tipo: tipoFinal,
+    direcao: direcao || DIRECAO_PADRAO[tipoFinal],
+    magnitude,
+    original: txt,
+  };
+}
+
+function renderContratos() {
+  const alvo = document.getElementById('m-contratos');
+  const u = porId(estado.usuarioAtivo);
+
+  alvo.innerHTML = `
+    <div class="cabecalho-modulo">
+      <span class="olho">Módulo 04 · Contratos condicionais</span>
+      <h2 id="t4">"Se o faturamento cair 20%" — e aí, quanto custa?</h2>
+      <p>Escolha um documento, escreva a condição em português e o motor confronta cada cláusula com o cenário, classificando por semáforo e calculando a exposição sobre o faturamento real de ${esc(u.empresa)}.</p>
+    </div>
+
+    <div class="grade g2" style="align-items:start">
+      <div class="cartao">
+        <label class="campo">
+          <span>Documento carregado</span>
+          <select id="sel-doc">${DOCUMENTOS.map((d) => `<option value="${d.id}">${esc(d.nome)}</option>`).join('')}</select>
+        </label>
+        <label class="campo">
+          <span>Condição a testar</span>
+          <input type="text" id="in-condicao" value="Se o faturamento cair 20%" />
+        </label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
+          ${['Se o faturamento cair 20%', 'Se o faturamento cair 35%', 'Se o SLA ficar 3% fora do ar', 'Se houver mudança de controle', 'Se a inadimplência subir 8%']
+            .map((s) => `<button class="btn btn-peq" data-sugestao="${esc(s)}">${esc(s)}</button>`).join('')}
+        </div>
+        <button class="btn btn-ouro" id="btn-analisar" style="width:100%">Analisar cláusulas</button>
+        <div id="doc-texto" style="margin-top:16px"></div>
+      </div>
+      <div id="saida-contrato">
+        <div class="cartao"><p class="lista-vazia">Nenhuma análise ainda. Rode "Analisar cláusulas" para ver o relatório.</p></div>
+      </div>
+    </div>
+  `;
+
+  const mostrarDoc = () => {
+    const d = DOCUMENTOS.find((x) => x.id === document.getElementById('sel-doc').value);
+    document.getElementById('doc-texto').innerHTML =
+      `<span class="rotulo-peq">Trecho do documento simulado</span>
+       <div class="doc" style="margin-top:7px">${d.clausulas.map((c) => `CLÁUSULA ${c.id} — ${c.titulo.toUpperCase()}\n${c.texto}`).join('\n\n')}</div>`;
+  };
+  mostrarDoc();
+
+  document.getElementById('sel-doc').addEventListener('change', mostrarDoc);
+  document.querySelectorAll('[data-sugestao]').forEach((b) =>
+    b.addEventListener('click', () => { document.getElementById('in-condicao').value = b.dataset.sugestao; analisarContrato(); }));
+  document.getElementById('btn-analisar').addEventListener('click', analisarContrato);
+}
+
+function analisarContrato() {
+  const u = porId(estado.usuarioAtivo);
+  const doc = DOCUMENTOS.find((x) => x.id === document.getElementById('sel-doc').value);
+  const cond = interpretarCondicao(document.getElementById('in-condicao').value);
+
+  logIA('CONTRATO', `Condição interpretada: tipo <b>${cond.tipo}</b>, direção <b>${cond.direcao}</b>, magnitude <span class="val">${pct(cond.magnitude)}</span>. Confrontando ${doc.clausulas.length} cláusulas de "${esc(doc.nome)}".`, 'calculo');
+
+  const avaliadas = doc.clausulas.map((c) => {
+    const casaTipo = c.gatilho.tipo === cond.tipo;
+    const casaDirecao = c.gatilho.direcao === cond.direcao;
+    const disparou = casaTipo && casaDirecao && cond.magnitude >= c.gatilho.limiar;
+    const excedente = disparou ? (cond.magnitude - c.gatilho.limiar) / Math.max(0.01, c.gatilho.limiar) : 0;
+
+    let nivel = 'verde';
+    if (disparou) nivel = excedente > 1.0 ? 'vermelho' : excedente > 0.25 ? 'amarelo' : 'amarelo';
+    if (disparou && c.gatilho.limiar >= 0.20) nivel = 'vermelho';
+    if (!disparou && casaTipo && casaDirecao && cond.magnitude >= c.gatilho.limiar * 0.7) nivel = 'amarelo';
+
+    const valor = disparou ? Math.round(c.exposicao(u, cond.magnitude)) : 0;
+    return { c, disparou, nivel, valor, excedente };
+  }).sort((a, b) => b.valor - a.valor);
+
+  const total = avaliadas.reduce((s, a) => s + a.valor, 0);
+  const vermelhas = avaliadas.filter((a) => a.nivel === 'vermelho').length;
+  const ebitdaEstimado = u.faturamento * 0.13;
+
+  const NIVEL_TXT = { verde: 'Verde — não dispara', amarelo: 'Amarelo — dispara com folga estreita', vermelho: 'Vermelho — dispara com folga larga' };
+
+  document.getElementById('saida-contrato').innerHTML = `
+    <div class="cartao" style="border-color:${total > ebitdaEstimado ? 'var(--vermelho)' : 'var(--linha)'}">
+      <span class="rotulo-peq">Exposição no cenário "${esc(cond.original)}"</span>
+      <div class="num-tese" style="margin-top:6px;color:${total > ebitdaEstimado ? 'var(--vermelho)' : 'var(--ouro)'}">${brl(total)}</div>
+      <p style="color:var(--neutro);font-size:13px;margin:7px 0 0">
+        ${pct(total / u.faturamento, 1)} do faturamento de ${esc(u.empresa)} ·
+        <b style="color:${total > ebitdaEstimado ? 'var(--vermelho)' : 'var(--creme)'}">${pct(total / ebitdaEstimado, 0)} do EBITDA estimado</b> ·
+        ${vermelhas} cláusula${vermelhas === 1 ? '' : 's'} em vermelho
+      </p>
+      ${total > ebitdaEstimado ? `<p style="font-size:13px;color:var(--vermelho);margin:9px 0 0"><b>A exposição supera o resultado do ano.</b> Neste cenário o contrato não reduz lucro — consome o resultado inteiro e entra no capital de giro.</p>` : ''}
+    </div>
+
+    <div style="margin-top:var(--gap);display:grid;gap:12px">
+      ${avaliadas.map((a) => `
+        <article class="cartao" style="border-left:3px solid var(--${a.nivel === 'verde' ? 'verde' : a.nivel === 'amarelo' ? 'amarelo' : 'vermelho'})">
+          <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <div style="flex:1;min-width:200px">
+              <span class="semaforo v-${a.nivel}"><span class="ponto"></span>${NIVEL_TXT[a.nivel]}</span>
+              <h3 style="font-size:15.5px;font-weight:650;margin:6px 0 0">Cláusula ${a.c.id} — ${esc(a.c.titulo)}</h3>
+            </div>
+            <div style="text-align:right">
+              <div style="font-family:var(--fonte-dado);font-size:17px;font-variant-numeric:tabular-nums">${a.valor ? brl(a.valor) : '—'}</div>
+              <span class="rotulo-peq">exposição</span>
+            </div>
+          </div>
+          <p style="font-size:13px;color:var(--neutro);margin:11px 0 0">${a.c.analise(u, cond.magnitude)}</p>
+          <p style="font-size:11.5px;color:var(--neutro-fraco);margin:8px 0 0;font-family:var(--fonte-dado)">
+            gatilho: ${a.c.gatilho.tipo} · ${a.c.gatilho.direcao} · limiar ${pct(a.c.gatilho.limiar)} ·
+            cenário ${pct(cond.magnitude)} → ${a.disparou ? `excede em ${pct(a.excedente, 0)}` : 'não atinge'}
+          </p>
+        </article>`).join('')}
+    </div>`;
+
+  logIA('CONTRATO', `Relatório fechado: <span class="val">${brl(total)}</span> de exposição, <b>${pct(total / ebitdaEstimado, 0)} do EBITDA estimado</b>. ${vermelhas ? `Cláusula mais grave: <b>${esc(avaliadas[0].c.titulo)}</b> (${brl(avaliadas[0].valor)}).` : 'Nenhuma cláusula em vermelho neste cenário.'}`, 'decisao');
+}
+
+/* ============================================================================
+   MÓDULO 5 — LXP ADAPTATIVO E MENTORIA HÍBRIDA
+   A trilha reordena por prioridade calculada: urgência do OKR que exige a
+   competência × o fato de a pessoa não ter aquela competência. Uma trilha
+   fixa trata todo mundo igual; esta trata o gargalo de cada um.
+   ========================================================================== */
+const CATALOGO = [
+  { id: 'c1',  titulo: 'Construindo o primeiro canal de outbound', comp: ['OUTBOUND_B2B', 'CANAIS_TRACAO'], min: 42 },
+  { id: 'c2',  titulo: 'Diagnóstico de churn em 5 cortes', comp: ['RETENCAO'], min: 28 },
+  { id: 'c3',  titulo: 'Precificação por valor percebido', comp: ['PRICING'], min: 35 },
+  { id: 'c4',  titulo: 'Unit economics que sobrevivem à diligência', comp: ['UNIT_ECONOMICS'], min: 51 },
+  { id: 'c5',  titulo: 'Estruturando um processo de M&A comprador', comp: ['MA_FUSOES', 'VALUATION'], min: 64 },
+  { id: 'c6',  titulo: 'Ciclo de caixa: onde o dinheiro fica preso', comp: ['GESTAO_CAIXA'], min: 33 },
+  { id: 'c7',  titulo: 'Margem de contribuição por SKU e por cliente', comp: ['MARGEM'], min: 39 },
+  { id: 'c8',  titulo: 'Do modelo próprio ao franqueado', comp: ['FRANQUIAS'], min: 47 },
+  { id: 'c9',  titulo: 'CS enterprise: da renovação à expansão', comp: ['CS_ENTERPRISE'], min: 36 },
+  { id: 'c10', titulo: 'Mídia paga com margem, não com ROAS', comp: ['MIDIA_PERFORMANCE'], min: 44 },
+  { id: 'c11', titulo: 'BI operacional para quem não tem time de dados', comp: ['DADOS_BI'], min: 30 },
+  { id: 'c12', titulo: 'Acordo de sócios e sucessão familiar', comp: ['SUCESSAO'], min: 55 },
+  { id: 'c13', titulo: 'Captação: preparando a empresa antes do fundo', comp: ['CAPTACAO'], min: 49 },
+  { id: 'c14', titulo: 'Take rate: como cobrar mais sem perder oferta', comp: ['TAKE_RATE'], min: 32 },
+  { id: 'c15', titulo: 'Reestruturação tributária na transição', comp: ['TRIBUTARIO'], min: 58 },
+  { id: 'c16', titulo: 'Liderança em operação sob pressão', comp: ['LIDERANCA'], min: 26 },
+];
+
+/**
+ * A ordem "de prateleira": alfabética, igual para todo mundo.
+ *
+ * É o contraste que o módulo existe para mostrar. Um catálogo neutro não sabe
+ * qual é o seu gargalo — e é exatamente por isso que a maioria das trilhas de
+ * micro-learning é abandonada na terceira aula.
+ */
+const CATALOGO_PADRAO = [...CATALOGO].sort((a, b) => a.titulo.localeCompare(b.titulo, 'pt-BR'));
+
+const PESO_RISCO = { CRITICO: 3, ATRASADO: 2, NO_PRAZO: 0.5 };
+
+function prioridadeTrilha(u) {
+  const demanda = new Map();
+  (u.okrs || []).forEach((o) => {
+    const risco = riscoOkr(o);
+    (OKR_COMPETENCIA[o.titulo] || []).forEach((c) => {
+      demanda.set(c, Math.max(demanda.get(c) || 0, PESO_RISCO[risco]));
+    });
+  });
+
+  return CATALOGO.map((m) => {
+    const puxadoPorOkr = Math.max(0, ...m.comp.map((c) => demanda.get(c) || 0));
+    const lacuna = m.comp.some((c) => u.preciso.includes(c)) ? 2 : 0;
+    const jaTem = m.comp.every((c) => u.tenho.includes(c)) ? -2.5 : 0;
+    const score = puxadoPorOkr * 2 + lacuna + jaTem;
+    const okrOrigem = (u.okrs || []).find((o) => (OKR_COMPETENCIA[o.titulo] || []).some((c) => m.comp.includes(c)));
+    return { m, score, puxadoPorOkr, lacuna, jaTem, okrOrigem };
+  }).sort((a, b) => b.score - a.score || a.m.min - b.m.min);
+}
+
+function renderLxp() {
+  const alvo = document.getElementById('m-lxp');
+  const u = porId(estado.usuarioAtivo);
+  const ordemCatalogo = CATALOGO_PADRAO.map((m) => m.id);
+  const lista = estado.trilhaReordenada
+    ? prioridadeTrilha(u)
+    : CATALOGO_PADRAO.map((m) => ({ m, score: 0, okrOrigem: null }));
+  const mentores = USUARIOS.filter((m) => m.papel === 'MENTOR')
+    .map((m) => ({ m, nota: calcularMatch(u, m).total, dist: distanciaKm(CIDADES[u.cidade], CIDADES[m.cidade]) }))
+    .sort((a, b) => b.nota - a.nota);
+
+  alvo.innerHTML = `
+    <div class="cabecalho-modulo">
+      <span class="olho">Módulo 05 · Capacitação e mentoria híbrida</span>
+      <h2 id="t5">A trilha se reorganiza quando o OKR atrasa</h2>
+      <p>O catálogo é o mesmo para todos. A ordem não é. Cada módulo recebe prioridade pelo risco do OKR que exige aquela competência, descontando o que ${esc(u.nome)} já domina.</p>
+    </div>
+
+    <div class="grade g2" style="align-items:start">
+      <div class="cartao">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+          <span class="rotulo-peq">Trilha de micro-learning ${estado.trilhaReordenada ? '· reordenada pelo algoritmo' : '· ordem de prateleira, igual para todos'}</span>
+          <button class="btn btn-peq ${estado.trilhaReordenada ? '' : 'btn-ouro'}" id="btn-reordenar">
+            ${estado.trilhaReordenada ? 'Ver ordem padrão' : 'Detectar OKR atrasado e reordenar'}
+          </button>
+        </div>
+
+        <div style="margin-top:12px">
+          ${lista.slice(0, 9).map((item, i) => {
+            const posOriginal = ordemCatalogo.indexOf(item.m.id);
+            const delta = estado.trilhaReordenada ? posOriginal - i : 0;
+            return `
+              <div class="trilha-item">
+                <span class="pos">${String(i + 1).padStart(2, '0')}</span>
+                <div>
+                  <div style="font-size:14px;font-weight:600">${esc(item.m.titulo)}</div>
+                  <div style="font-size:11.5px;color:var(--neutro-fraco);margin-top:2px">
+                    ${item.m.comp.map((c) => COMP[c]).join(' · ')} · ${item.m.min} min
+                    ${estado.trilhaReordenada && item.okrOrigem ? ` · puxado por "${esc(item.okrOrigem.titulo)}" (${OKR_ROTULO[riscoOkr(item.okrOrigem)]})` : ''}
+                  </div>
+                </div>
+                <span class="${delta > 0 ? 'subiu' : delta < 0 ? 'desceu' : ''}">${delta > 0 ? `▲ ${delta}` : delta < 0 ? `▼ ${-delta}` : ''}</span>
+              </div>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <div class="cartao">
+        <span class="rotulo-peq">Mentoria híbrida — cruzamento de geolocalização</span>
+        <p style="font-size:13px;color:var(--neutro);margin:8px 0 0">
+          ${esc(u.nome)} está em ${esc(u.cidade)}. Presencial fica disponível abaixo de 120 km; acima disso o sistema propõe vídeo em vez de sugerir um encontro que ninguém faria.
+        </p>
+        <div class="rolagem" style="margin-top:12px">
+          <table>
+            <thead><tr><th>Mentor</th><th>Nota</th><th>Distância</th><th>Formato</th><th style="text-align:right">Hora</th></tr></thead>
+            <tbody>
+              ${mentores.map((x) => `
+                <tr>
+                  <td>
+                    <div style="font-weight:600">${esc(x.m.nome)}</div>
+                    <div style="font-size:11.5px;color:var(--neutro-fraco)">${x.m.tenho.slice(0, 3).map((c) => COMP[c]).join(' · ')}</div>
+                  </td>
+                  <td class="n" style="color:${x.nota >= 60 ? 'var(--ouro)' : 'var(--neutro)'}">${x.nota}</td>
+                  <td class="n">${x.dist} km</td>
+                  <td>${x.dist <= 120 ? '<span class="semaforo v-verde"><span class="ponto"></span>Presencial</span>' : '<span class="semaforo v-amarelo"><span class="ponto"></span>Vídeo</span>'}</td>
+                  <td class="n" style="text-align:right">${brlCent(x.m.hora)}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+        <button class="btn btn-ouro btn-peq" id="btn-agendar" style="margin-top:14px;width:100%">Agendar com o mentor de maior nota</button>
+        <div id="saida-agenda" style="margin-top:12px"></div>
+      </div>
+    </div>`;
+
+  document.getElementById('btn-reordenar').addEventListener('click', () => {
+    estado.trilhaReordenada = !estado.trilhaReordenada;
+    if (estado.trilhaReordenada) {
+      const atrasados = okrsEmRisco(u);
+      const ord = prioridadeTrilha(u);
+      logIA('LXP', `OKR ${atrasados.length ? `<b>${esc(atrasados[0].titulo)}</b> classificado como <b>${OKR_ROTULO[riscoOkr(atrasados[0])]}</b>` : 'sem atraso detectado'}. Trilha reordenada: <b>${esc(ord[0].m.titulo)}</b> sobe para 1º (prioridade <span class="val">${ord[0].score.toFixed(1)}</span>), no lugar de "${esc(CATALOGO_PADRAO[0].titulo)}".`, 'decisao');
+    } else {
+      logIA('LXP', 'Voltando à ordem de prateleira — a mesma para todo mundo, que é exatamente o problema que o reordenamento resolve.');
+    }
+    renderLxp();
+  });
+
+  document.getElementById('btn-agendar').addEventListener('click', () => {
+    const x = mentores[0];
+    const presencial = x.dist <= 120;
+    const lacunas = interseccao(u.preciso, x.m.tenho);
+    document.getElementById('saida-agenda').innerHTML = `
+      <div style="border:1px solid var(--ouro);border-radius:8px;padding:13px">
+        <span class="rotulo-peq" style="color:var(--ouro)">Sessão proposta</span>
+        <p style="font-size:13.5px;margin:7px 0 0">
+          <b>${esc(x.m.nome)}</b> · ${presencial ? `presencial em ${esc(u.cidade)}` : `videochamada (${x.dist} km)`} · 90 min · ${brlCent(x.m.hora * 1.5)}
+        </p>
+        <p style="font-size:13px;color:var(--neutro);margin:8px 0 0">
+          Pauta montada a partir dos seus gargalos que ${esc(x.m.nome.split(' ')[0])} cobre:
+          ${lacunas.length ? lacunas.map((c) => COMP[c]).join(', ') : 'contexto geral de gestão'}.
+        </p>
+      </div>`;
+    logIA('MENTORIA', `Sessão proposta com <b>${esc(x.m.nome)}</b> (nota ${x.nota}, ${x.dist} km). Formato <b>${presencial ? 'presencial' : 'vídeo'}</b>. Pauta gerada dos gargalos cobertos: ${lacunas.map((c) => COMP[c]).join(', ') || 'contexto geral'}.`, 'decisao');
+  });
+}
+
+/* ============================================================================
+   NAVEGAÇÃO, ROTEIRO DE PITCH E ARRANQUE
+   ========================================================================== */
+const MODULOS = [
+  { id: 'm-populacao', tit: 'População do ecossistema', des: '16 perfis com OKR, gargalo e faturamento' },
+  { id: 'm-match',     tit: 'Match por complementaridade', des: 'a conta que decide, exposta' },
+  { id: 'm-feed',      tit: 'Inteligência sintética', des: 'macro traduzido no caixa de cada um' },
+  { id: 'm-contratos', tit: 'Contratos condicionais', des: 'semáforo e exposição em reais' },
+  { id: 'm-lxp',       tit: 'Trilha e mentoria híbrida', des: 'reordena quando o OKR atrasa' },
+];
+
+const trilho = document.getElementById('trilho');
+MODULOS.forEach((m, i) => {
+  const b = document.createElement('button');
+  b.className = 'aba';
+  b.setAttribute('aria-current', i === 0 ? 'true' : 'false');
+  b.dataset.alvo = m.id;
+  b.innerHTML = `<span class="num">0${i + 1}</span><span><span class="tit">${m.tit}</span><span class="des">${m.des}</span></span>`;
+  b.addEventListener('click', () => irPara(m.id));
+  trilho.appendChild(b);
+});
+
+function irPara(id) {
+  document.querySelectorAll('.modulo').forEach((s) => s.classList.toggle('ativo', s.id === id));
+  document.querySelectorAll('.aba').forEach((a) => a.setAttribute('aria-current', String(a.dataset.alvo === id)));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+document.addEventListener('keydown', (e) => {
+  const deckAberto = document.getElementById('m-match').classList.contains('ativo');
+  if (!deckAberto || !document.getElementById('btn-sim')) return;
+  if (e.key === 'ArrowRight') { e.preventDefault(); decidir(true); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); decidir(false); }
+});
+
+/** Roteiro guiado: um clique percorre os cinco módulos disparando uma ação
+ *  real em cada um, com o console narrando. É o modo de apresentar sem
+ *  precisar lembrar por onde começar. */
+let roteiroRodando = false;
+document.getElementById('btn-roteiro').addEventListener('click', async () => {
+  if (roteiroRodando) return;
+  roteiroRodando = true;
+  const btn = document.getElementById('btn-roteiro');
+  btn.textContent = '● Rodando…';
+  const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  irPara('m-populacao');
+  logIA('PITCH', 'Passo 1 — a população. 16 empresas com OKR datado, gargalo declarado e faturamento. Sem isto, nenhum dos módulos seguintes tem o que cruzar.', 'decisao');
+  await espera(2600);
+
+  irPara('m-match');
+  logIA('PITCH', 'Passo 2 — o match. Repare que a nota vem decomposta em cinco componentes: é defensável na frente de quem for perguntar por que estes dois.', 'decisao');
+  await espera(2400);
+  decidir(true);
+  await espera(1800);
+
+  irPara('m-feed');
+  logIA('PITCH', 'Passo 3 — o feed. O mesmo fato macro vale um número diferente para cada empresa, porque é aplicado ao faturamento e ao ciclo de caixa dela.', 'decisao');
+  await espera(2400);
+  const primeiroPlano = document.querySelector('[data-plano]');
+  if (primeiroPlano) primeiroPlano.click();
+  await espera(2200);
+
+  irPara('m-contratos');
+  logIA('PITCH', 'Passo 4 — o contrato. Aqui está a parte que ninguém consegue improvisar num pitch: a exposição sai em reais e comparada ao EBITDA.', 'decisao');
+  await espera(2200);
+  analisarContrato();
+  await espera(2400);
+
+  irPara('m-lxp');
+  logIA('PITCH', 'Passo 5 — a trilha. É o que fecha o ciclo: o OKR atrasado reordena o aprendizado, e o aprendizado volta para o OKR.', 'decisao');
+  await espera(1800);
+  const reord = document.getElementById('btn-reordenar');
+  if (reord && !estado.trilhaReordenada) reord.click();
+
+  btn.textContent = '▶ Roteiro de pitch';
+  roteiroRodando = false;
+});
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  estado.conexoes = [];
+  estado.descartes = [];
+  estado.trilhaReordenada = false;
+  montarFila();
+  renderTudo();
+  logIA('SISTEMA', 'Simulação reiniciada. Salas fechadas, fila recomposta, trilha de volta à ordem padrão.');
+});
+
+function renderTudo() {
+  renderPopulacao();
+  renderMatch();
+  renderFeed();
+  renderContratos();
+  renderLxp();
+  ligarBotoesSala();
+}
+
+/* Arranque */
+logIA('SISTEMA', 'Motor iniciado. <b>16 perfis</b> carregados em memória, <b>26 competências</b> no vocabulário controlado, <b>5 eventos macro</b> monitorados, <b>3 documentos</b> indexados por gatilho.');
+montarFila();
+renderTudo();
+logIA('SISTEMA', `${USUARIOS.flatMap((u) => okrsEmRisco(u)).length} OKRs fora do prazo detectados na população — é esta lista que alimenta a priorização do match e da trilha.`, 'calculo');
+</script>
