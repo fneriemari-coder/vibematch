@@ -1,6 +1,7 @@
 import { Controller, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { CourseCoverService } from '../academy/course-cover.service';
+import { LessonVideoService } from '../academy/lesson-video.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -9,7 +10,10 @@ import { Roles } from '../../common/decorators/roles.decorator';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN)
 export class AdminCoursesController {
-  constructor(private readonly courseCoverService: CourseCoverService) {}
+  constructor(
+    private readonly courseCoverService: CourseCoverService,
+    private readonly lessonVideoService: LessonVideoService,
+  ) {}
 
   /**
    * Generates cover art for courses that have none, and answers with the
@@ -29,5 +33,22 @@ export class AdminCoursesController {
   @HttpCode(HttpStatus.OK)
   generateCovers() {
     return this.courseCoverService.backfillMissingCovers();
+  }
+
+  /**
+   * Renders narrated lesson videos for modules that have a script but no
+   * video, and answers per module.
+   *
+   * Slow on purpose to call and slow to answer — each lesson is a speech
+   * request plus an ffmpeg pass, and a batch of eight runs for minutes. That
+   * is exactly why it is a route an operator triggers rather than something
+   * boot does: a container still opening its port has better uses for its
+   * cores. Reach for it again after it returns; the batch limit means one call
+   * does not have to finish the whole catalogue.
+   */
+  @Post('videos')
+  @HttpCode(HttpStatus.OK)
+  renderLessonVideos() {
+    return this.lessonVideoService.renderMissingVideos();
   }
 }

@@ -46,10 +46,19 @@ FROM node:20-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
-# Also needed at runtime, not just at build: the query engine loads libssl on
-# every boot, and `prisma migrate deploy` runs the schema engine below.
+# openssl/ca-certificates are needed at runtime, not just at build: the query
+# engine loads libssl on every boot, and `prisma migrate deploy` runs the
+# schema engine below.
+#
+# ffmpeg and the font are what lesson-video.service.ts shells out to when it
+# turns a module's narration script into a watchable MP4. They are runtime-only
+# — nothing in the build touches them — and the service degrades to "not
+# attempted, ffmpeg is not installed" rather than failing if this line is ever
+# dropped. fonts-dejavu-core is a couple of megabytes and is the difference
+# between a lesson with its title on screen and one without.
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && apt-get install -y --no-install-recommends \
+    openssl ca-certificates ffmpeg fonts-dejavu-core \
   && rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./

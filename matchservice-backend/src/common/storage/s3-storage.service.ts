@@ -1,6 +1,6 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 /**
@@ -55,6 +55,34 @@ export class S3StorageService {
     const url = `https://${this.bucket}.s3.${this.region}.amazonaws.com/${key}`;
     this.logger.log(`Uploaded ${key} (${body.length} bytes) to S3`);
     return url;
+  }
+
+  /**
+   * Reads an object this service wrote back into memory.
+   *
+   * Goes through the SDK rather than fetching the public URL on purpose: the
+   * lesson renderer wants a course's cover as a video background, and turning
+   * a stored URL into an outbound HTTP request would put a server-side fetch
+   * of a database-held address into the codebase — the exact shape the news
+   * image proxy had to be hardened against. A bucket key cannot point anywhere
+   * but the bucket.
+   *
+   * Returns null when the object is absent, since every caller so far treats a
+   * missing asset as "use the fallback" rather than as an error.
+   */
+  async downloadBuffer(key: string): Promise<Buffer | null> {
+    if (!this.client || !this.bucket) return null;
+
+    try {
+      const response = await this.client.send(
+        new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+      );
+      const bytes = await response.Body?.transformToByteArray();
+      return bytes ? Buffer.from(bytes) : null;
+    } catch (error) {
+      this.logger.warn(`Could not read ${key} from S3: ${error instanceof Error ? error.message : error}`);
+      return null;
+    }
   }
 
   /**

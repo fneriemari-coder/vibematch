@@ -46,6 +46,10 @@ export class LazyOpenAI {
     return this.resolve().images;
   }
 
+  get audio(): OpenAI['audio'] {
+    return this.resolve().audio;
+  }
+
   private resolve(): OpenAI {
     if (!this.apiKey) {
       // 503, not 500: the request is fine, the deployment is missing a
