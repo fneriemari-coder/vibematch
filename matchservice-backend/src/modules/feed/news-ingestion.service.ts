@@ -22,7 +22,7 @@
  * a richer excerpt is ever needed, negotiate a licence with the publisher.
  * ---------------------------------------------------------------------------
  */
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { NewsSource, Prisma } from '@prisma/client';
 import Parser from 'rss-parser';
@@ -94,7 +94,7 @@ interface RawFeedItem {
 }
 
 @Injectable()
-export class NewsIngestionService {
+export class NewsIngestionService implements OnModuleInit {
   private readonly logger = new Logger(NewsIngestionService.name);
 
   /**
@@ -113,6 +113,50 @@ export class NewsIngestionService {
   });
 
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Populate the Radar on the first boot that finds it empty.
+   *
+   * The hourly cron alone means a fresh deployment shows an empty feed for up
+   * to an hour, and the person looking at it has no way to tell an empty
+   * database from a broken one. Since a new environment is exactly when
+   * someone is most likely to be evaluating the product, that first hour is
+   * the worst possible time to look unfinished.
+   *
+   * Deliberately not awaited: publisher feeds are slow and some will time out,
+   * and none of that should hold up the HTTP server. Failures are already
+   * recorded per source on `NewsSource.lastError`, so a bad feed surfaces in
+   * `POST /admin/news/refresh` rather than crashing boot.
+   *
+   * Only runs when there are zero items, so a restart never re-hammers the
+   * publishers.
+   */
+  async onModuleInit(): Promise<void> {
+    const existing = await this.prisma.newsItem.count();
+    if (existing > 0) {
+      this.logger.log(`Radar already has ${existing} items — skipping first-run ingestion.`);
+      return;
+    }
+
+    this.logger.log('Radar is empty — running first-run ingestion in the background.');
+    void this.ingestAllSources()
+      .then((result) => {
+        this.logger.log(
+          `First-run ingestion finished: ${result.totalCreated} created, ${result.totalErrors} source errors.`,
+        );
+        if (result.totalCreated === 0) {
+          this.logger.warn(
+            'First-run ingestion created nothing. Check per-source errors via POST /admin/news/refresh — ' +
+              'a feed URL may have moved, or outbound HTTPS may be blocked for this deployment.',
+          );
+        }
+      })
+      .catch((error) => {
+        this.logger.error(
+          `First-run ingestion failed: ${error instanceof Error ? error.message : error}`,
+        );
+      });
+  }
 
   /**
    * ScheduleModule.forRoot() is already registered globally in AppModule —
