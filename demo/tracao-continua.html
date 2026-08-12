@@ -359,8 +359,104 @@
   .subiu { color: var(--verde); font-size: 11.5px; font-family: var(--fonte-dado); }
   .desceu { color: var(--neutro-fraco); font-size: 11.5px; font-family: var(--fonte-dado); }
 
+  /* ---------- Sala de Guerra Comercial ---------- */
+  .guerra {
+    position: fixed;
+    inset: 0;
+    background: rgba(3, 8, 14, .93);
+    z-index: 50;
+    display: none;
+    overflow-y: auto;
+    padding: 26px 18px 40px;
+  }
+  .guerra.aberta { display: block; animation: entraGuerra .35s ease both; }
+  @keyframes entraGuerra { from { opacity: 0; } to { opacity: 1; } }
+
+  .guerra-caixa {
+    max-width: 1080px;
+    margin: 0 auto;
+    background: var(--painel);
+    border: 1px solid var(--ouro);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 30px 90px rgba(0, 0, 0, .6);
+  }
+  .guerra-faixa {
+    background: linear-gradient(90deg, #10263C, #1B3E5C);
+    padding: 20px 26px;
+    border-bottom: 1px solid var(--ouro);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .guerra-faixa .selo-topo {
+    font-family: var(--fonte-dado);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ouro);
+  }
+  .guerra-corpo { padding: 24px 26px 28px; }
+  .guerra-secao + .guerra-secao { margin-top: 24px; padding-top: 22px; border-top: 1px solid var(--linha-fraca); }
+
+  .medidor { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+  .medidor svg { flex: none; }
+  .contador {
+    font-family: var(--fonte-display);
+    font-size: 54px;
+    line-height: 1;
+    color: var(--ouro-claro);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .assinatura {
+    border: 1px dashed var(--linha);
+    border-radius: 9px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+  .assinatura.assinado { border-style: solid; border-color: var(--verde); background: rgba(79,169,126,.06); }
+  .assinatura .hash {
+    font-family: var(--fonte-dado);
+    font-size: 11px;
+    color: var(--neutro-fraco);
+    word-break: break-all;
+  }
+
+  /* ---------- Anúncios patrocinados ---------- */
+  .patrocinado {
+    border-color: var(--ouro);
+    background: linear-gradient(180deg, rgba(201,164,107,.07), transparent 60%);
+  }
+  .tarja-ads {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--fonte-dado);
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ouro);
+    border: 1px solid var(--ouro);
+    border-radius: 4px;
+    padding: 2px 7px;
+  }
+  .porque {
+    font-family: var(--fonte-dado);
+    font-size: 11.5px;
+    color: var(--neutro-fraco);
+    border-left: 2px solid var(--linha);
+    padding-left: 10px;
+    margin-top: 10px;
+  }
+  .porque b { color: var(--neutro); font-weight: 600; }
+
   @media (max-width: 900px) {
     .palco { grid-template-columns: 1fr; }
+    .contador { font-size: 42px; }
     .trilho {
       flex-direction: row;
       overflow-x: auto;
@@ -412,6 +508,10 @@
     <section class="modulo" id="m-contratos" aria-labelledby="t4"></section>
     <section class="modulo" id="m-lxp" aria-labelledby="t5"></section>
   </main>
+
+  <div class="guerra" id="guerra" role="dialog" aria-modal="true" aria-label="Sala de guerra comercial">
+    <div class="guerra-caixa" id="guerra-caixa"></div>
+  </div>
 
   <div class="console" aria-live="polite">
     <div class="console-topo">
@@ -884,6 +984,72 @@ function ranquear(a, universo = USUARIOS) {
 }
 
 /* ============================================================================
+   5b. VALOR DESTRAVADO E SINERGIA OPERACIONAL
+   O número grande da Sala de Guerra não pode ser inventado — é a primeira
+   coisa que um investidor vai querer abrir. Cada competência coberta carrega
+   uma fração do faturamento que ela historicamente destrava, ponderada pelo
+   risco do OKR que a exige e pela probabilidade de o deal sair, que vem da
+   própria nota do match.
+   ========================================================================== */
+const IMPACTO_COMPETENCIA = {
+  CANAIS_TRACAO: 0.14, GROWTH_PLG: 0.12, OUTBOUND_B2B: 0.11, INSIDE_SALES: 0.08,
+  PRICING: 0.06, UNIT_ECONOMICS: 0.05, MARGEM: 0.045,
+  MA_FUSOES: 0.18, VALUATION: 0.09, CAPTACAO: 0.15,
+  GESTAO_CAIXA: 0.035, SUPPLY: 0.04, INDUSTRIA_40: 0.05,
+  FRANQUIAS: 0.16, RETENCAO: 0.07, CS_ENTERPRISE: 0.05,
+  MARCA: 0.05, MIDIA_PERFORMANCE: 0.06, DADOS_BI: 0.03, PRODUTO: 0.05,
+  LIDERANCA: 0.025, SUCESSAO: 0.06, TRIBUTARIO: 0.05,
+  INTERNACIONAL: 0.12, ECOMMERCE: 0.06, TAKE_RATE: 0.08,
+};
+
+/** Um gargalo que trava um OKR crítico vale mais do que o mesmo gargalo solto. */
+function multiplicadorRisco(u, comp) {
+  const okr = (u.okrs || []).find((o) => (OKR_COMPETENCIA[o.titulo] || []).includes(comp));
+  if (!okr) return 1;
+  return { CRITICO: 1.4, ATRASADO: 1.2, NO_PRAZO: 1 }[riscoOkr(okr)];
+}
+
+/**
+ * Probabilidade de realização. Um match de 45 e um de 90 não entregam o mesmo
+ * valor esperado, e apresentar os dois como se entregassem é o tipo de número
+ * que desmonta na primeira pergunta.
+ */
+function probabilidadeDeal(nota) { return 0.35 + 0.5 * (Math.min(100, nota) / 100); }
+
+function valorDestravado(u, comps, nota) {
+  const prob = probabilidadeDeal(nota);
+  const linhas = comps.map((c) => {
+    const bruto = (u.faturamento || 0) * (IMPACTO_COMPETENCIA[c] || 0.03) * multiplicadorRisco(u, c);
+    return { comp: c, bruto, liquido: bruto * prob, risco: multiplicadorRisco(u, c) };
+  });
+  return { linhas, prob, total: linhas.reduce((s, l) => s + l.liquido, 0) };
+}
+
+/**
+ * Sinergia operacional — proposital e diferente da nota de match.
+ *
+ * A nota ordena a fila; a sinergia responde outra pergunta: de tudo que estas
+ * duas empresas declararam precisar, que fração esta dupla fecha? Para um
+ * mentor, o "preciso" dele não entra na conta — ele está vendendo hora, não
+ * buscando troca, e incluir isso puniria o par mais óbvio do ecossistema.
+ */
+function sinergiaOperacional(a, b, m) {
+  const denominador = b.papel === 'MENTOR'
+    ? a.preciso.length
+    : a.preciso.length + b.preciso.length;
+  const numerador = b.papel === 'MENTOR'
+    ? m.cobertos.length
+    : m.cobertos.length + m.devolvidos.length;
+  const cobertura = denominador ? numerador / denominador : 0;
+  const notaMedia = (m.total + calcularMatch(b, a).total) / 200;
+  return {
+    cobertura,
+    valor: Math.round((0.6 * cobertura + 0.4 * notaMedia) * 100),
+    numerador, denominador,
+  };
+}
+
+/* ============================================================================
    6. ESTADO DA SIMULAÇÃO
    ========================================================================== */
 const estado = {
@@ -1177,8 +1343,12 @@ function decidir(aceitou) {
 
   if (veredito.aceita) {
     const nda = gerarNda(eu, b, item.match);
-    estado.conexoes.unshift({ de: eu.id, para: b.id, match: item.match, inverso, nda, aberta: true });
+    const conexao = { de: eu.id, para: b.id, match: item.match, inverso, nda, aberta: true };
+    estado.conexoes.unshift(conexao);
     logIA('SALA', `Aceite de <b>${esc(b.nome)}</b>: ${veredito.motivo}. Sala aberta entre <b>${esc(eu.empresa)}</b> e <b>${esc(b.empresa)}</b> com NDA pré-assinado — objeto: ${item.match.cobertos.map((c) => COMP[c]).join(', ') || 'troca de contexto'}.`, 'decisao');
+    avancar();
+    abrirSalaDeGuerra(conexao);
+    return;
   } else {
     logIA('MATCH', `<b>${esc(b.nome)}</b> recusou: ${veredito.motivo}. Nenhuma sala é aberta — dupla opt-in significa que um lado querendo não basta.`, 'calculo');
   }
@@ -1211,11 +1381,11 @@ function painelConexoes() {
     </div>`;
   }
   return estado.conexoes.map((c, i) => {
-    const de = porId(c.de), para = porId(c.para);
-    return `<div class="cartao" style="margin-bottom:${i === estado.conexoes.length - 1 ? 0 : 'var(--gap)'}">
+    const de = porId(c.de), para = parteDestino(c);
+    return `<div class="cartao ${c.patrocinado ? 'patrocinado' : ''}" style="margin-bottom:${i === estado.conexoes.length - 1 ? 0 : 'var(--gap)'}">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
         <div>
-          <span class="rotulo-peq">Sala aberta</span>
+          <span class="rotulo-peq">${c.patrocinado ? 'Sala aberta · via demanda patrocinada' : 'Sala aberta'}</span>
           <h3 style="font-size:15px;font-weight:650;margin-top:3px">${esc(de.empresa)} ⇄ ${esc(para.empresa)}</h3>
         </div>
         <span class="selo casa">${c.match.total} / ${c.inverso.total}</span>
@@ -1224,13 +1394,19 @@ function painelConexoes() {
         Objeto: ${c.match.cobertos.map((x) => COMP[x]).join(', ') || 'troca de contexto'}.
         Contrapartida: ${c.match.devolvidos.map((x) => COMP[x]).join(', ') || 'a definir na sala'}.
       </p>
-      <button class="btn btn-peq" style="margin-top:11px" data-nda="${i}">Ver NDA gerado</button>
+      <div style="display:flex;gap:8px;margin-top:11px;flex-wrap:wrap">
+        <button class="btn btn-ouro btn-peq" data-sala="${i}">Abrir sala de guerra</button>
+        <button class="btn btn-peq" data-nda="${i}">Ver NDA</button>
+      </div>
       <div class="doc" id="nda-${i}" style="display:none;margin-top:11px">${esc(c.nda)}</div>
     </div>`;
   }).join('');
 }
 
 function ligarBotoesSala() {
+  document.querySelectorAll('[data-sala]').forEach((b) => {
+    b.addEventListener('click', () => abrirSalaDeGuerra(estado.conexoes[Number(b.dataset.sala)]));
+  });
   document.querySelectorAll('[data-nda]').forEach((b) => {
     b.addEventListener('click', () => {
       const alvo = document.getElementById(`nda-${b.dataset.nda}`);
@@ -1300,7 +1476,221 @@ ${a.empresa}                           ${b.empresa}`;
 }
 
 /* ============================================================================
-   MÓDULO 3 — FEED DE INTELIGÊNCIA SINTÉTICA
+   MÓDULO 3 — SALA DE GUERRA COMERCIAL
+   Dispara no match. Três coisas na tela, nesta ordem, porque é a ordem em que
+   um CEO decide: quanto os dois se encaixam, quanto isso vale, e o que ele
+   assina agora para começar. O NDA fica ao lado do número de propósito — o
+   argumento do produto é que a burocracia deixa de ser o gargalo entre a
+   vontade e o começo.
+   ========================================================================== */
+
+/** Hash curto e determinístico só para dar aparência de protocolo à assinatura simulada. */
+function protocolo(txt) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < txt.length; i++) { h ^= txt.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h.toString(16).padStart(8, '0').toUpperCase();
+}
+
+/** Arco do medidor de sinergia, calculado — não é caminho SVG escrito à mão. */
+function arcoMedidor(pctValor) {
+  const R = 62, cx = 74, cy = 74;
+  const ang = Math.PI * (pctValor / 100);
+  const x = cx - R * Math.cos(ang);
+  const y = cy - R * Math.sin(ang);
+  const grande = pctValor > 50 ? 1 : 0;
+  return `M ${cx - R} ${cy} A ${R} ${R} 0 ${grande} 1 ${x.toFixed(2)} ${y.toFixed(2)}`;
+}
+
+/** A contraparte de um deal patrocinado não está na população — ela vem do anúncio. */
+function parteDestino(conexao) {
+  return conexao.contraparteExterna || porId(conexao.para);
+}
+
+function abrirSalaDeGuerra(conexao) {
+  const a = porId(conexao.de), b = parteDestino(conexao);
+  const sin = sinergiaOperacional(a, b, conexao.match);
+  // Três formas de gerar valor, porque são três relações diferentes. Somar as
+  // competências dos dois lados só faz sentido entre pares: um mentor fatura
+  // hora, e um anunciante põe na mesa o aporte ou o contrato que anunciou.
+  const vA = conexao.patrocinado
+    ? { linhas: [], prob: probabilidadeDeal(conexao.match.total),
+        total: conexao.patrocinado.valorOfertado * probabilidadeDeal(conexao.match.total) }
+    : valorDestravado(a, conexao.match.cobertos, conexao.match.total);
+  // No deal patrocinado, a base do anunciante é o tamanho da empreitada, não o
+  // faturamento inteiro da holding: uma joint-venture de R$ 12M não move os
+  // R$ 480M do grupo, e projetar sobre a base cheia produz um número grande e
+  // indefensável — exatamente o tipo que desmonta na primeira pergunta.
+  const baseB = conexao.patrocinado
+    ? { ...b, faturamento: Math.min(b.faturamento, conexao.patrocinado.valorOfertado * 3) }
+    : b;
+  const vB = b.papel === 'MENTOR'
+    ? { linhas: [], prob: 0, total: b.hora * 1.5 * 24 }
+    : valorDestravado(baseB, conexao.patrocinado ? conexao.patrocinado.competencias : conexao.match.devolvidos,
+        conexao.inverso.total);
+  const combinado = vA.total + vB.total;
+
+  const caixa = document.getElementById('guerra-caixa');
+  caixa.innerHTML = `
+    <div class="guerra-faixa">
+      <div style="flex:1;min-width:260px">
+        <span class="selo-topo">Sala de guerra comercial · deal aberto</span>
+        <h2 style="font-family:var(--fonte-display);font-size:26px;font-weight:400;margin-top:6px">
+          ${esc(a.empresa)} <span style="color:var(--ouro)">⇄</span> ${esc(b.empresa)}
+        </h2>
+        <p style="margin:5px 0 0;font-size:13px;color:var(--neutro)">
+          ${esc(a.nome)}, ${esc(a.cargo)} · ${esc(b.nome)}, ${esc(b.cargo)}
+        </p>
+      </div>
+      <button class="btn" id="fechar-guerra">Fechar</button>
+    </div>
+
+    <div class="guerra-corpo">
+      <div class="guerra-secao">
+        <div class="medidor">
+          <svg width="148" height="86" viewBox="0 0 148 86" aria-hidden="true">
+            <path d="M 12 74 A 62 62 0 0 1 136 74" fill="none" stroke="#1E4362" stroke-width="11" stroke-linecap="round"/>
+            <path d="${arcoMedidor(sin.valor)}" fill="none" stroke="#C9A46B" stroke-width="11" stroke-linecap="round"/>
+          </svg>
+          <div>
+            <span class="rotulo-peq">Sinergia operacional</span>
+            <div class="contador" id="contador-sinergia" data-alvo="${sin.valor}">0%</div>
+            <p style="font-size:13px;color:var(--neutro);margin:6px 0 0;max-width:44ch">
+              Das <b>${sin.denominador}</b> lacunas declaradas entre as duas empresas, esta dupla fecha <b>${sin.numerador}</b>.
+              A nota do match entra com 40% de peso — cobertura sem probabilidade de acontecer não é sinergia.
+            </p>
+          </div>
+          <div style="margin-left:auto;text-align:right;min-width:210px">
+            <span class="rotulo-peq">Geração de valor combinada · 12 meses</span>
+            <div class="num-tese" style="color:var(--ouro);margin-top:6px">${brl(combinado)}</div>
+            <p style="font-size:12px;color:var(--neutro-fraco);margin:5px 0 0">
+              já descontada a probabilidade de realização de ${pct(vA.prob)}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="guerra-secao">
+        <span class="rotulo-peq">De onde sai o número — linha a linha</span>
+        <div class="rolagem" style="margin-top:10px">
+          <table>
+            <thead><tr><th>Para quem</th><th>Competência destravada</th><th>Base</th><th>Risco do OKR</th><th style="text-align:right">Valor esperado</th></tr></thead>
+            <tbody>
+              ${vA.linhas.map((l) => `<tr>
+                <td>${esc(a.empresa)}</td>
+                <td>${COMP[l.comp]}</td>
+                <td class="n">${pct(IMPACTO_COMPETENCIA[l.comp] || 0.03, 1)} de ${brl(a.faturamento)}</td>
+                <td class="n">×${l.risco.toFixed(2)}</td>
+                <td class="n" style="text-align:right">${brl(l.liquido)}</td>
+              </tr>`).join('')}
+              ${vB.linhas.map((l) => `<tr>
+                <td>${esc(b.empresa)}</td>
+                <td>${COMP[l.comp]}</td>
+                <td class="n">${pct(IMPACTO_COMPETENCIA[l.comp] || 0.03, 1)} de ${brl(baseB.faturamento)}${conexao.patrocinado ? ' <span style="color:var(--neutro-fraco)">(escala da empreitada)</span>' : ''}</td>
+                <td class="n">×${l.risco.toFixed(2)}</td>
+                <td class="n" style="text-align:right">${brl(l.liquido)}</td>
+              </tr>`).join('')}
+              ${b.papel === 'MENTOR' ? `<tr>
+                <td>${esc(b.empresa)}</td>
+                <td>Receita de mentoria contratada</td>
+                <td class="n">${brlCent(b.hora)}/h · 24 sessões de 90 min</td>
+                <td class="n">—</td>
+                <td class="n" style="text-align:right">${brl(vB.total)}</td>
+              </tr>` : ''}
+              ${conexao.patrocinado ? `<tr>
+                <td>${esc(a.empresa)}</td>
+                <td>Oferta anunciada — ${esc(conexao.patrocinado.oferta)}</td>
+                <td class="n">${brl(conexao.patrocinado.valorOfertado)} ofertados</td>
+                <td class="n">×${pct(vA.prob)}</td>
+                <td class="n" style="text-align:right">${brl(vA.total)}</td>
+              </tr>` : ''}
+            </tbody>
+          </table>
+        </div>
+        ${!vA.linhas.length && !vB.linhas.length && b.papel !== 'MENTOR'
+          ? '<p class="lista-vazia" style="margin-top:8px">Nenhuma competência trocada — este deal vale pela escala e pelo setor, não por lacuna fechada.</p>' : ''}
+      </div>
+
+      <div class="guerra-secao">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+          <span class="rotulo-peq">Painel de documentos · NDA pré-preenchido</span>
+          <span id="status-nda" class="selo">aguardando as duas assinaturas</span>
+        </div>
+        <div class="doc" style="margin-top:10px;max-height:240px">${esc(conexao.nda)}</div>
+
+        <div class="grade g2" style="margin-top:14px">
+          ${[[a, 'a'], [b, 'b']].map(([p, k]) => `
+            <div class="assinatura" id="assin-${k}">
+              <div>
+                <span class="rotulo-peq">Assinatura digital simulada</span>
+                <div style="font-weight:650;font-size:14.5px;margin-top:3px">${esc(p.nome)}</div>
+                <div style="font-size:12.5px;color:var(--neutro)">${esc(p.cargo)} · ${esc(p.empresa)}</div>
+              </div>
+              <button class="btn btn-ouro btn-peq" data-assinar="${k}">Assinar como ${esc(p.nome.split(' ')[0])}</button>
+              <div class="hash" id="hash-${k}"></div>
+            </div>`).join('')}
+        </div>
+        <p style="font-size:11.5px;color:var(--neutro-fraco);margin:11px 0 0">
+          Minuta gerada por software e assinatura simulada — em produção, o aceite passa por certificado e revisão jurídica antes de vincular as partes.
+        </p>
+      </div>
+    </div>`;
+
+  document.getElementById('guerra').classList.add('aberta');
+  document.getElementById('fechar-guerra').addEventListener('click', fecharSalaDeGuerra);
+
+  const assinadas = { a: false, b: false };
+  caixa.querySelectorAll('[data-assinar]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const k = btn.dataset.assinar;
+      const p = k === 'a' ? a : b;
+      assinadas[k] = true;
+      const bloco = document.getElementById(`assin-${k}`);
+      bloco.classList.add('assinado');
+      btn.disabled = true;
+      btn.textContent = 'Assinado';
+      btn.classList.remove('btn-ouro');
+      const carimbo = relogio.toLocaleString('pt-BR');
+      document.getElementById(`hash-${k}`).textContent =
+        `protocolo ${protocolo(conexao.nda + p.nome)} · ${carimbo}`;
+      logIA('NDA', `<b>${esc(p.nome)}</b> assinou o NDA de ${esc(a.empresa)} ⇄ ${esc(b.empresa)}.`, 'decisao');
+      if (assinadas.a && assinadas.b) {
+        const s = document.getElementById('status-nda');
+        s.textContent = 'NDA vigente — sala liberada para números';
+        s.className = 'selo casa';
+        logIA('NDA', `Duas assinaturas registradas. O canal entre <b>${esc(a.empresa)}</b> e <b>${esc(b.empresa)}</b> passa a permitir troca de números — <b>tempo do match ao contrato vigente: menos de um minuto</b>.`, 'decisao');
+      }
+    });
+  });
+
+  // O contador sobe de 0 até a sinergia: é o gesto que faz a sala parecer uma
+  // sala, e não um cartão que apareceu pronto.
+  const alvoNum = sin.valor;
+  const el = document.getElementById('contador-sinergia');
+  const reduzido = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduzido) { el.textContent = `${alvoNum}%`; }
+  else {
+    let n = 0;
+    const passo = () => {
+      n = Math.min(alvoNum, n + Math.max(1, Math.round(alvoNum / 28)));
+      el.textContent = `${n}%`;
+      if (n < alvoNum) requestAnimationFrame(passo);
+    };
+    requestAnimationFrame(passo);
+  }
+
+  logIA('SALA DE GUERRA', `Sinergia operacional <span class="val">${sin.valor}%</span> (${sin.numerador} de ${sin.denominador} lacunas fechadas). Valor combinado projetado <span class="val">${brl(combinado)}</span> em 12 meses, com probabilidade de realização de <span class="val">${pct(vA.prob)}</span> derivada da nota do match.`, 'calculo');
+}
+
+function fecharSalaDeGuerra() {
+  document.getElementById('guerra').classList.remove('aberta');
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.getElementById('guerra').classList.contains('aberta')) fecharSalaDeGuerra();
+});
+
+/* ============================================================================
+   MÓDULO 4 — FEED DE INTELIGÊNCIA SINTÉTICA
    Cada evento macro carrega parâmetros numéricos. O insight não é texto
    pronto: é o evento aplicado ao setor, ao faturamento e ao ciclo de caixa
    daquela empresa, com o impacto em reais calculado na hora.
@@ -1378,6 +1768,116 @@ const EVENTOS_MACRO = [
   },
 ];
 
+/* ----------------------------------------------------------------------------
+   ANÚNCIOS DE DEMANDA PATROCINADA
+   O anunciante não compra atenção, compra qualificação: ele declara o que
+   procura e o mínimo que aceita, e a plataforma só entrega o card a quem passa
+   nesses filtros. É o que separa este inventário de mídia display — o clique
+   já vem pré-qualificado por faturamento e por competência declarada, e o
+   card mostra ao usuário exatamente por que ele foi alcançado.
+   -------------------------------------------------------------------------- */
+const ANUNCIOS = [
+  {
+    id: 'ad1', anunciante: 'Norvex Participações', porte: 'Holding · R$ 480M',
+    demanda: 'Parceiro de tecnologia em IA para joint-venture em automação industrial',
+    exige: ['DADOS_BI', 'PRODUTO'], faturamentoMinimo: 3_000_000,
+    setoresAlvo: ['SAAS', 'MARKETPLACE', 'EDTECH', 'INDUSTRIA'],
+    investimentoMensal: 42_000, cpl: 1_850,
+    oferta: 'Aporte de até R$ 12M e contrato de fornecimento de 36 meses garantido.',
+  },
+  {
+    id: 'ad2', anunciante: 'Grupo Aurora Varejo', porte: 'Rede · R$ 310M',
+    demanda: 'Operação de last mile para 140 lojas no Sul e Sudeste',
+    exige: ['SUPPLY', 'UNIT_ECONOMICS'], faturamentoMinimo: 5_000_000,
+    setoresAlvo: ['LOGISTICA', 'INDUSTRIA'],
+    investimentoMensal: 28_000, cpl: 2_400,
+    oferta: 'Contrato de 24 meses, volume mínimo garantido e adiantamento de 20%.',
+  },
+  {
+    id: 'ad3', anunciante: 'Banco Meridiano', porte: 'Instituição financeira',
+    demanda: 'Empresas em preparação para captação — cobrimos a diligência',
+    exige: ['GESTAO_CAIXA', 'DADOS_BI', 'MARGEM'], faturamentoMinimo: 10_000_000,
+    setoresAlvo: ['SAUDE', 'INDUSTRIA', 'AGRO', 'CONSTRUCAO', 'ALIMENTACAO', 'ENERGIA'],
+    investimentoMensal: 65_000, cpl: 3_100,
+    oferta: 'Estruturação sem custo antecipado e taxa de sucesso abaixo do mercado.',
+  },
+  {
+    id: 'ad4', anunciante: 'Vertine Franchising', porte: 'Operadora · R$ 95M',
+    demanda: 'Redes próprias querendo converter para franquia — entramos como sócios da conversão',
+    exige: ['FRANQUIAS', 'MARCA', 'LIDERANCA'], faturamentoMinimo: 8_000_000,
+    setoresAlvo: ['ALIMENTACAO', 'SAUDE', 'VAREJO', 'MODA'],
+    investimentoMensal: 19_500, cpl: 1_450,
+    oferta: 'Capital de expansão e time de implantação por 18 meses.',
+  },
+  {
+    id: 'ad5', anunciante: 'Kaledo Capital', porte: 'Search fund',
+    demanda: 'Indústrias familiares com sucessão em aberto para aquisição de controle',
+    exige: ['SUPPLY', 'MARGEM', 'GESTAO_CAIXA'], faturamentoMinimo: 15_000_000,
+    setoresAlvo: ['INDUSTRIA', 'AGRO', 'CONSTRUCAO'],
+    investimentoMensal: 88_000, cpl: 6_700,
+    oferta: 'Liquidez ao fundador com permanência opcional de 24 meses.',
+  },
+];
+
+/**
+ * Quem responde do outro lado quando alguém aceita a demanda, e quanto vale a
+ * oferta anunciada. Fica separado do anúncio porque são coisas diferentes: o
+ * card é peça de mídia, isto é a contraparte real que entra na sala.
+ */
+const CONTRAPARTE_AD = {
+  ad1: { nome: 'Vera Nakamura', cargo: 'Diretora de novos negócios', setor: 'INDUSTRIA', faturamento: 480_000_000, valorOfertado: 12_000_000 },
+  ad2: { nome: 'Sérgio Bianchi', cargo: 'Diretor de operações', setor: 'VAREJO', faturamento: 310_000_000, valorOfertado: 7_400_000 },
+  ad3: { nome: 'Alice Fontenele', cargo: 'Head de originação', setor: 'SAAS', faturamento: 900_000_000, valorOfertado: 18_000_000 },
+  ad4: { nome: 'Marcelo Aguiar', cargo: 'Sócio de expansão', setor: 'ALIMENTACAO', faturamento: 95_000_000, valorOfertado: 5_600_000 },
+  ad5: { nome: 'Renan Cioffi', cargo: 'Managing partner', setor: 'INDUSTRIA', faturamento: 200_000_000, valorOfertado: 26_000_000 },
+};
+
+function contraparteDoAnuncio(ad) {
+  const c = CONTRAPARTE_AD[ad.id];
+  return {
+    id: `ad:${ad.id}`, nome: c.nome, cargo: c.cargo, empresa: ad.anunciante,
+    setor: c.setor, faturamento: c.faturamento, funcionarios: 0,
+    cidade: 'São Paulo', papel: 'EXECUTIVO', resumo: ad.demanda,
+    tenho: [], preciso: ad.exige, formacao: [], okrs: [],
+  };
+}
+
+/** Um anúncio só aparece para quem passa nos três filtros que o anunciante comprou. */
+function elegibilidadeAd(ad, u) {
+  const porFaturamento = u.faturamento >= ad.faturamentoMinimo;
+  const porSetor = ad.setoresAlvo.includes(u.setor);
+  const competenciasCasadas = interseccao(ad.exige, u.tenho);
+  const porCompetencia = competenciasCasadas.length > 0;
+  return {
+    elegivel: porFaturamento && porSetor && porCompetencia,
+    porFaturamento, porSetor, competenciasCasadas,
+    motivo: [
+      porFaturamento
+        ? `faturamento de ${brl(u.faturamento)} acima do mínimo de ${brl(ad.faturamentoMinimo)}`
+        : `faturamento abaixo do mínimo de ${brl(ad.faturamentoMinimo)}`,
+      porSetor ? `setor ${SETOR[u.setor]} está no alvo` : `setor ${SETOR[u.setor]} fora do alvo`,
+      porCompetencia
+        ? `você declara ${competenciasCasadas.map((c) => COMP[c]).join(', ')}`
+        : `nenhuma das competências exigidas (${ad.exige.map((c) => COMP[c]).join(', ')})`,
+    ],
+  };
+}
+
+function adsPara(u) {
+  return ANUNCIOS.map((ad) => ({ ad, el: elegibilidadeAd(ad, u) })).filter((x) => x.el.elegivel);
+}
+
+/** O que este inventário fatura — a pergunta que o investidor faz em seguida. */
+function receitaDeMidia() {
+  const alcance = ANUNCIOS.map((ad) => ({
+    ad,
+    alcancados: USUARIOS.filter((u) => u.papel !== 'MENTOR' && elegibilidadeAd(ad, u).elegivel).length,
+  }));
+  const mensal = ANUNCIOS.reduce((s, a) => s + a.investimentoMensal, 0);
+  const impressoes = alcance.reduce((s, a) => s + a.alcancados, 0);
+  return { alcance, mensal, impressoes };
+}
+
 function insightsPara(u) {
   return EVENTOS_MACRO
     .filter((e) => e.setores.includes(u.setor))
@@ -1390,6 +1890,8 @@ function renderFeed() {
   const u = porId(estado.usuarioAtivo);
   const itens = insightsPara(u);
   const exposicao = itens.reduce((s, i) => s + i.resultado.numero, 0);
+  const ads = adsPara(u);
+  const midia = receitaDeMidia();
 
   alvo.innerHTML = `
     <div class="cabecalho-modulo">
@@ -1405,6 +1907,62 @@ function renderFeed() {
         ${pct(exposicao / u.faturamento, 1)} do faturamento anual · ${itens.length} eventos relevantes de ${EVENTOS_MACRO.length} monitorados
       </p>
     </div>
+
+    ${ads.length ? `
+    <div class="grade" style="gap:var(--gap);margin-bottom:20px">
+      ${ads.map(({ ad, el }, k) => `
+        <article class="cartao patrocinado">
+          <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start">
+            <div style="flex:1;min-width:250px">
+              <span class="tarja-ads">◆ Demanda patrocinada</span>
+              <h3 style="font-size:17px;font-weight:650;margin:9px 0 0">${esc(ad.demanda)}</h3>
+              <p style="font-size:13px;color:var(--neutro);margin:5px 0 0">
+                <b>${esc(ad.anunciante)}</b> · ${esc(ad.porte)}
+              </p>
+            </div>
+            <div style="text-align:right">
+              <span class="rotulo-peq">Exige no mínimo</span>
+              <div style="font-family:var(--fonte-dado);font-size:15px;margin-top:3px">${brl(ad.faturamentoMinimo)}</div>
+            </div>
+          </div>
+
+          <p style="font-size:13.5px;color:var(--creme);margin:12px 0 0">${esc(ad.oferta)}</p>
+
+          <div class="porque">
+            <b>Por que você está vendo isto:</b><br>
+            ${el.motivo.map((m) => `· ${esc(m)}`).join('<br>')}
+          </div>
+
+          <button class="btn btn-ouro" style="margin-top:14px;width:100%" data-ad="${k}">
+            Dar match na demanda patrocinada
+          </button>
+        </article>`).join('')}
+    </div>
+
+    <details class="cartao" style="margin-bottom:20px">
+      <summary style="cursor:pointer;font-size:13.5px">
+        <span class="rotulo-peq">Como isto fatura</span> — abrir o inventário de mídia do mês
+      </summary>
+      <div class="rolagem" style="margin-top:12px">
+        <table>
+          <thead><tr><th>Anunciante</th><th>Demanda</th><th>Alcance qualificado</th><th>Custo por lead</th><th style="text-align:right">Investimento/mês</th></tr></thead>
+          <tbody>
+            ${midia.alcance.map((x) => `<tr>
+              <td>${esc(x.ad.anunciante)}</td>
+              <td style="max-width:280px">${esc(x.ad.demanda)}</td>
+              <td class="n">${x.alcancados} de ${USUARIOS.filter((u) => u.papel !== 'MENTOR').length}</td>
+              <td class="n">${brl(x.ad.cpl)}</td>
+              <td class="n" style="text-align:right">${brl(x.ad.investimentoMensal)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:13px;color:var(--neutro);margin:12px 0 0">
+        <b style="color:var(--ouro-claro)">${brl(midia.mensal)}/mês</b> em cinco anunciantes sobre uma base de ${USUARIOS.filter((u) => u.papel !== 'MENTOR').length} empresas —
+        ${brl(midia.mensal / USUARIOS.filter((u) => u.papel !== 'MENTOR').length)} por empresa por mês, só de mídia.
+        O anunciante não compra atenção: compra o filtro de faturamento e de competência declarada, e paga por lead qualificado, não por impressão.
+      </p>
+    </details>` : ''}
 
     <div class="grade" style="gap:var(--gap)">
       ${itens.map((i, idx) => `
@@ -1433,6 +1991,31 @@ function renderFeed() {
     b.addEventListener('click', () => gerarPlano(Number(b.dataset.plano), itens)));
   document.querySelectorAll('[data-emergencia]').forEach((b) =>
     b.addEventListener('click', () => agendarEmergencia(Number(b.dataset.emergencia), itens)));
+  document.querySelectorAll('[data-ad]').forEach((b) =>
+    b.addEventListener('click', () => aceitarDemandaPatrocinada(ads[Number(b.dataset.ad)])));
+}
+
+/**
+ * Aceitar uma demanda patrocinada é um match como outro qualquer — o que muda
+ * é que o anunciante já pagou para declarar o interesse, então não há segundo
+ * opt-in a esperar. Vai direto para a sala.
+ */
+function aceitarDemandaPatrocinada({ ad, el }) {
+  const u = porId(estado.usuarioAtivo);
+  const contraparte = contraparteDoAnuncio(ad);
+  const match = calcularMatch(u, contraparte);
+  const inverso = calcularMatch(contraparte, u);
+  const nda = gerarNda(u, contraparte, match);
+
+  const conexao = {
+    de: u.id, para: contraparte.id, match, inverso, nda, aberta: true,
+    patrocinado: { ad, competencias: el.competenciasCasadas, valorOfertado: CONTRAPARTE_AD[ad.id].valorOfertado, oferta: ad.oferta },
+    contraparteExterna: contraparte,
+  };
+  estado.conexoes.unshift(conexao);
+
+  logIA('ADS', `<b>${esc(u.empresa)}</b> aceitou a demanda patrocinada de <b>${esc(ad.anunciante)}</b>. Lead qualificado entregue ao anunciante por <span class="val">${brl(ad.cpl)}</span> — o filtro de ${brl(ad.faturamentoMinimo)} e de competência já foi aplicado antes do card aparecer.`, 'decisao');
+  abrirSalaDeGuerra(conexao);
 }
 
 function gerarPlano(idx, itens) {
@@ -1909,8 +2492,8 @@ function renderLxp() {
    ========================================================================== */
 const MODULOS = [
   { id: 'm-populacao', tit: 'População do ecossistema', des: '16 perfis com OKR, gargalo e faturamento' },
-  { id: 'm-match',     tit: 'Match por complementaridade', des: 'a conta que decide, exposta' },
-  { id: 'm-feed',      tit: 'Inteligência sintética', des: 'macro traduzido no caixa de cada um' },
+  { id: 'm-match',     tit: 'Match e sala de guerra', des: 'a conta que decide + o deal aberto' },
+  { id: 'm-feed',      tit: 'Feed e demanda patrocinada', des: 'macro em reais + o inventário que fatura' },
   { id: 'm-contratos', tit: 'Contratos condicionais', des: 'semáforo e exposição em reais' },
   { id: 'm-lxp',       tit: 'Trilha e mentoria híbrida', des: 'reordena quando o OKR atrasa' },
 ];
@@ -1958,11 +2541,14 @@ document.getElementById('btn-roteiro').addEventListener('click', async () => {
   logIA('PITCH', 'Passo 2 — o match. Repare que a nota vem decomposta em cinco componentes: é defensável na frente de quem for perguntar por que estes dois.', 'decisao');
   await espera(2400);
   decidir(true);
-  await espera(1800);
+  await espera(1400);
+  logIA('PITCH', 'Passo 3 — a sala de guerra. Sinergia, valor combinado com a conta aberta, e o NDA já preenchido com os nomes e o OKR em jogo. Do match ao contrato assinado sem sair da tela.', 'decisao');
+  await espera(3400);
 
+  fecharSalaDeGuerra();
   irPara('m-feed');
-  logIA('PITCH', 'Passo 3 — o feed. O mesmo fato macro vale um número diferente para cada empresa, porque é aplicado ao faturamento e ao ciclo de caixa dela.', 'decisao');
-  await espera(2400);
+  logIA('PITCH', 'Passo 4 — o feed. O mesmo fato macro vale um número diferente para cada empresa, porque é aplicado ao faturamento e ao ciclo de caixa dela. E no topo dele fica o inventário que fatura: demanda patrocinada, vendida por filtro de faturamento e competência.', 'decisao');
+  await espera(2600);
   const primeiroPlano = document.querySelector('[data-plano]');
   if (primeiroPlano) primeiroPlano.click();
   await espera(2200);
