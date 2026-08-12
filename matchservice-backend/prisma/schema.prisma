@@ -245,6 +245,37 @@ enum MentorshipBookingStatus {
   CANCELED
 }
 
+/// What kind of document was dropped into the AI analysis workspace.
+///
+/// Classified from the filename AND from signals in the extracted text (see
+/// `workspace/document-classifier.ts`) — never taken from the client, which
+/// would let a mislabelled upload pick the wrong analyser.
+///
+/// The value is load-bearing rather than cosmetic: each one routes to a
+/// different extraction pass. CONTRATO looks for clauses and, more
+/// importantly, for the clauses that are *missing*; FINANCEIRO/PLANILHA parse
+/// the numbers and measure concentration; PROPOSTA looks for price, scope and
+/// timeline and reports what was left undefined.
+enum WorkspaceDocKind {
+  CONTRATO
+  PROPOSTA
+  FINANCEIRO
+  PLANILHA
+  RELATORIO
+  OUTRO
+}
+
+/// Lifecycle of one analysis run. The analysis is produced synchronously, so
+/// a stored row is normally READY; PENDING is the default the row is born
+/// with, and FAILED is written — rather than throwing a 500 and losing the
+/// question the user asked — when neither the model nor the local analyser
+/// could say anything true about the document.
+enum WorkspaceAnalysisStatus {
+  PENDING
+  READY
+  FAILED
+}
+
 // ---------------------------------------------------------------------------
 // Models
 // ---------------------------------------------------------------------------
@@ -332,6 +363,9 @@ model User {
   growthDiagnostics   GrowthDiagnostic[]
   mentorshipOfferings MentorshipOffering[] @relation("MentorshipMentor")
   mentorshipBookings  MentorshipBooking[]  @relation("MentorshipMentee")
+
+  workspaceDocuments WorkspaceDocument[]
+  workspaceAnalyses  WorkspaceAnalysis[]
 
   @@map("users")
 }
@@ -1255,4 +1289,94 @@ model MentorshipBooking {
   @@index([menteeId, createdAt])
   @@index([offeringId])
   @@map("mentorship_bookings")
+}
+
+// ---------------------------------------------------------------------------
+// AI analysis workspace (modules/workspace)
+// ---------------------------------------------------------------------------
+
+/// A file a business owner dropped into the workspace, plus the text we could
+/// actually read out of it.
+///
+/// `extractedText` is the analysable payload, truncated to a bounded size so a
+/// single row can never blow up a query; `charCount` is the length BEFORE that
+/// truncation, which is what lets the client say honestly "analisamos os
+/// primeiros 60.000 de 84.312 caracteres" instead of silently analysing a
+/// fraction of the document. A file we could not read any text out of (a
+/// scanned-image PDF) is never stored — the upload is rejected with an
+/// explanation instead, because an empty document that still answers questions
+/// is the worst possible outcome here.
+///
+/// `storageUrl` is only set when AWS_S3_* is configured. When it is not, the
+/// extracted text is all we keep; we do not fabricate a URL to a file nobody
+/// can download (same rule S3StorageService already follows).
+model WorkspaceDocument {
+  id     String @id @default(uuid())
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  filename  String
+  mimeType  String           @map("mime_type")
+  sizeBytes Int              @map("size_bytes")
+  kind      WorkspaceDocKind
+
+  extractedText String @map("extracted_text") @db.Text
+  charCount     Int    @map("char_count")
+
+  storageUrl String? @map("storage_url")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  analyses WorkspaceAnalysis[]
+
+  @@index([userId, createdAt])
+  @@map("workspace_documents")
+}
+
+/// One question asked against one document, and what came back.
+///
+/// `question` is stored verbatim because the analysis leads with an answer to
+/// it and quotes the document back — the pair (question, document) is the only
+/// reproducible input to a re-run.
+///
+/// `findings` is a JSON array of `{ title, detail, severity }`. It is JSON
+/// rather than a child table on purpose: a finding is never queried, filtered
+/// or joined on — it is read back exactly as written, always in full, always
+/// with its parent.
+///
+/// What is deliberately NOT here: the matched providers. They are resolved on
+/// read from `suggestedSkills` against live `UserProfile.skills`, so a
+/// provider who leaves the platform, changes their skills or whose K-Score
+/// moves is never rendered from a months-old snapshot. Same reason `context`
+/// (K-Score, open contracts, weakest pillar) is not stored.
+model WorkspaceAnalysis {
+  id         String            @id @default(uuid())
+  documentId String            @map("document_id")
+  document   WorkspaceDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId     String            @map("user_id")
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  question String                  @db.Text
+  status   WorkspaceAnalysisStatus @default(PENDING)
+
+  headline String
+  summary  String @db.Text
+
+  /// Array of `{ title, detail, severity: "ALTA" | "MEDIA" | "BAIXA" }`.
+  findings Json @default("[]")
+
+  risks           String[] @default([])
+  actions         String[] @default([])
+  suggestedSkills String[] @default([]) @map("suggested_skills")
+
+  /// Which path wrote this row — the model, or the deterministic analyser in
+  /// `workspace/document-analyzer.ts`. Both produce the same shape; the flag
+  /// exists so a reading can be audited, not so the client renders two things.
+  aiGenerated Boolean @default(false) @map("ai_generated")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@index([documentId, createdAt])
+  @@map("workspace_analyses")
 }

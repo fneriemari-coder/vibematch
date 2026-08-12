@@ -8,6 +8,7 @@ import '../../data/models/user_models.dart';
 import '../../data/repositories/admin_repository.dart';
 import '../../data/repositories/content_repository.dart';
 import '../../data/repositories/diagnostic_repository.dart';
+import '../../data/repositories/workspace_repository.dart';
 import '../../data/repositories/mastermind_repository.dart';
 import '../../data/repositories/wallet_repository.dart';
 import '../../logic/auth/auth_cubit.dart';
@@ -18,6 +19,7 @@ import 'admin_dashboard.dart';
 import 'admin_users_screen.dart';
 import 'content_screen.dart';
 import 'diagnostic_screen.dart';
+import 'workspace_screen.dart';
 import 'swipe_deck_screen.dart';
 import 'wallet_screen.dart';
 
@@ -87,6 +89,10 @@ class _HomeToggleScreenState extends State<HomeToggleScreen> {
               child: SizedBox(height: VibeMatchSpacing.sectionGap),
             ),
             SliverToBoxAdapter(child: _diagnosticBand()),
+            const SliverToBoxAdapter(
+              child: SizedBox(height: VibeMatchSpacing.sectionGap),
+            ),
+            SliverToBoxAdapter(child: _copilotBand()),
             const SliverToBoxAdapter(
               child: SizedBox(height: VibeMatchSpacing.sectionGap),
             ),
@@ -304,6 +310,66 @@ class _HomeToggleScreenState extends State<HomeToggleScreen> {
       ),
     );
   }
+
+  // --- Copiloto -----------------------------------------------------------
+
+  /// Pairs with the diagnostic directly above it: that one reads what the
+  /// person says about their business, this one reads the documents the
+  /// business actually produced.
+  Widget _copilotBand() {
+    return VibeContent(
+      child: VibeCard(
+        padding: const EdgeInsets.all(22),
+        onTap: _openCopilot,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text('COPILOTO', style: VibeMatchTextStyles.eyebrow),
+                const SizedBox(width: 8),
+                const VibeTag(label: 'IA', icon: Icons.auto_awesome_rounded),
+              ],
+            ),
+            const SizedBox(height: 12),
+            RichText(
+              text: TextSpan(
+                style: VibeMatchTextStyles.sectionTitle,
+                children: [
+                  const TextSpan(text: 'Traga um contrato. Descubra'),
+                  TextSpan(
+                    text: ' o que falta nele.',
+                    style: VibeMatchTextStyles.sectionTitleAccent,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Contrato, proposta, relatório ou planilha. Você pergunta o que '
+              'quer saber e a análise termina com quem, aqui dentro, pode '
+              'resolver o que ela encontrou.',
+              style: VibeMatchTextStyles.body,
+            ),
+            const SizedBox(height: 18),
+            OutlinedButton.icon(
+              onPressed: _openCopilot,
+              icon: const Icon(Icons.description_outlined, size: 18),
+              label: const Text('Abrir o Copiloto'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openCopilot() => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => WorkspaceScreen(
+            workspaceRepository: context.read<WorkspaceRepository>(),
+          ),
+        ),
+      );
 
   // --- Discovery modes ----------------------------------------------------
 

@@ -21,6 +21,7 @@ import 'data/repositories/media_repository.dart';
 import 'data/repositories/post_repository.dart';
 import 'data/repositories/swipe_repository.dart';
 import 'data/repositories/wallet_repository.dart';
+import 'data/repositories/workspace_repository.dart';
 import 'logic/auth/auth_cubit.dart';
 import 'presentation/screens/app_shell.dart';
 import 'presentation/screens/discovery_feed_screen.dart';
@@ -29,6 +30,7 @@ import 'presentation/screens/auth_screen.dart';
 import 'presentation/screens/data_privacy_screen.dart';
 import 'presentation/screens/deals_screen.dart';
 import 'presentation/screens/diagnostic_screen.dart';
+import 'presentation/screens/workspace_screen.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
@@ -136,6 +138,9 @@ class _MatchServiceAppState extends State<MatchServiceApp> {
         RepositoryProvider(
           create: (_) => MentorshipRepository(widget.dioClient),
         ),
+        RepositoryProvider(
+          create: (_) => WorkspaceRepository(widget.dioClient),
+        ),
       ],
       child: BlocProvider(
         create: (context) => AuthCubit(widget.authRepository)..bootstrap(),
@@ -166,6 +171,13 @@ class _MatchServiceAppState extends State<MatchServiceApp> {
               return MaterialPageRoute(
                 builder: (_) => DiagnosticScreen(
                   diagnosticRepository: DiagnosticRepository(widget.dioClient),
+                ),
+              );
+            }
+            if (settings.name == '/workspace') {
+              return MaterialPageRoute(
+                builder: (_) => WorkspaceScreen(
+                  workspaceRepository: WorkspaceRepository(widget.dioClient),
                 ),
               );
             }
