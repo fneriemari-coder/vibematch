@@ -15,6 +15,10 @@ import {
   WalletTransactionType,
 } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import {
+  boletoOptions,
+  oneOffPaymentMethods,
+} from '../../common/payments/payment-methods.util';
 import { ScoreEngine } from '../users/score.engine';
 import { MaintenanceService } from '../fintech/maintenance.service';
 import { ConnectService } from '../fintech/connect.service';
@@ -233,6 +237,10 @@ export class EscrowService {
 
     const session = await this.stripe.checkout.sessions.create({
       mode: 'payment',
+      // Boleto and Pix for BRL, cards elsewhere — see the util for why this
+      // cannot be a constant.
+      payment_method_types: oneOffPaymentMethods(project.currency),
+      payment_method_options: boletoOptions(project.currency),
       customer: stripeCustomerId,
       line_items: [
         {

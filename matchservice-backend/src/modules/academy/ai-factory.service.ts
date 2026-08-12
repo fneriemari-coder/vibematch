@@ -3,7 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LazyOpenAI } from '../../common/ai/lazy-openai';
 import PDFDocument from 'pdfkit';
-import { randomUUID } from 'crypto';
 import { Currency } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { S3StorageService } from '../../common/storage/s3-storage.service';
@@ -90,12 +89,17 @@ export const AI_GENERATED_COURSE_TAG = 'AI_GENERATED';
  * (scope + voice scripts), simulates rendering each lesson to video, and
  * produces a real downloadable PDF support pack.
  *
- * Honesty note: `generateLessonVideo` is an explicit PLACEHOLDER for an
- * external AI video engine (ElevenLabs/HeyGen-style) — no such integration
- * exists in this repo, so it returns a deterministic simulated URL rather
- * than performing a real render or a real upload for video/audio bytes we
- * don't actually have. The PDF material pack IS real: generated with
- * pdfkit and uploaded to real S3 via S3StorageService.
+ * Honesty note: there is no video rendering here. An avatar/voice engine
+ * (HeyGen, ElevenLabs) is not integrated, so `videoUrl` is left NULL and the
+ * lesson ships as its written script plus the material pack.
+ *
+ * This used to return a deterministic S3 URL for an object that was never
+ * uploaded. Every generated lesson therefore 404'd in the player, which reads
+ * as a broken CDN rather than a feature we have not built — the worse of the
+ * two failures, because it sends people looking for a bug that does not exist.
+ * A null tells the client the truth and it already handles it.
+ *
+ * The PDF material pack IS real: rendered with pdfkit and uploaded to S3.
  */
 @Injectable()
 export class AiFactoryService {
@@ -154,14 +158,14 @@ export class AiFactoryService {
     const modules = [];
     for (let i = 0; i < scope.modules.length; i++) {
       const mod = scope.modules[i];
-      const videoUrl = await this.generateLessonVideo(mod.voiceScript);
       const created = await this.prisma.courseModule.create({
         data: {
           courseId: course.id,
           orderIndex: i + 1,
           title: mod.title,
           voiceScript: mod.voiceScript,
-          videoUrl,
+          // Null until a real render exists — see the class doc.
+          videoUrl: null,
         },
       });
       modules.push(created);
@@ -230,14 +234,6 @@ export class AiFactoryService {
    * deterministic pseudo-URL; does not call any external service or upload
    * real media bytes, since none are actually generated here.
    */
-  private async generateLessonVideo(scriptText: string): Promise<string> {
-    const bucket = this.config.get<string>('AWS_S3_BUCKET') ?? 'vibematch-media';
-    const lessonId = randomUUID();
-    this.logger.debug(
-      `[SIMULATED VIDEO GENERATION] Rendering ${scriptText.length}-char script -> lesson ${lessonId} (no real video engine wired up)`,
-    );
-    return `https://${bucket}.s3.amazonaws.com/academy/lessons/${lessonId}.mp4`;
-  }
 
   private async generateMaterialPdf(
     courseId: string,

@@ -3,6 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 import { Prisma, SubscriptionStatus, SubscriptionTier, WalletTransactionType } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import {
+  boletoOptions,
+  oneOffPaymentMethods,
+} from '../../common/payments/payment-methods.util';
 import { ConnectService } from '../fintech/connect.service';
 
 // Instructor keeps 80% of every course sale; the platform's 20% covers
@@ -61,6 +65,10 @@ export class AcademyService {
     const appUrl = this.config.get('APP_URL') ?? 'https://app.matchservice.dev';
     const session = await this.stripe.checkout.sessions.create({
       mode: 'payment',
+      // Boleto and Pix for BRL, cards elsewhere — see the util for why this
+      // cannot be a constant.
+      payment_method_types: oneOffPaymentMethods(course.currency),
+      payment_method_options: boletoOptions(course.currency),
       customer: stripeCustomerId,
       line_items: [
         {

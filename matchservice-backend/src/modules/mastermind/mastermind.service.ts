@@ -3,6 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 import { Prisma, WalletTransactionType } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import {
+  boletoOptions,
+  oneOffPaymentMethods,
+} from '../../common/payments/payment-methods.util';
 import { ConnectService } from '../fintech/connect.service';
 import { CreateMastermindSessionDto } from './dto/create-session.dto';
 
@@ -95,6 +99,10 @@ export class MastermindService {
 
     const checkout = await this.stripe.checkout.sessions.create({
       mode: 'payment',
+      // Boleto and Pix for BRL, cards elsewhere — see the util for why this
+      // cannot be a constant.
+      payment_method_types: oneOffPaymentMethods(session.currency),
+      payment_method_options: boletoOptions(session.currency),
       customer: stripeCustomerId,
       line_items: [
         {
