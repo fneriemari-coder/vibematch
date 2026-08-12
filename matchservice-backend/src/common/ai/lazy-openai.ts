@@ -42,6 +42,10 @@ export class LazyOpenAI {
     return this.resolve().moderations;
   }
 
+  get images(): OpenAI['images'] {
+    return this.resolve().images;
+  }
+
   private resolve(): OpenAI {
     if (!this.apiKey) {
       // 503, not 500: the request is fine, the deployment is missing a

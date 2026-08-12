@@ -10,6 +10,7 @@ import {
   formatPercent,
   indexText,
   joinPtBr,
+  matchesTerm,
   moneyAmounts,
   moneyLiterals,
   normalize,
@@ -221,8 +222,7 @@ interface QuestionAnswer {
  * delivered confidently and destroys trust in one read.
  */
 function triggerFires(normalizedQuestion: string, trigger: string): boolean {
-  const escaped = trigger.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`(^|[^\\p{L}])${escaped}`, 'u').test(normalizedQuestion);
+  return matchesTerm(normalizedQuestion, trigger);
 }
 
 function answerQuestion(index: IndexedText, question: string): QuestionAnswer {
@@ -242,7 +242,7 @@ function answerQuestion(index: IndexedText, question: string): QuestionAnswer {
   const scored = index.normalizedSentences
     .map((sentence, position) => ({
       position,
-      hits: searched.filter((term) => sentence.includes(term)).length,
+      hits: searched.filter((term) => matchesTerm(sentence, term)).length,
       length: sentence.length,
     }))
     .filter((entry) => entry.hits > 0)
@@ -255,14 +255,14 @@ function answerQuestion(index: IndexedText, question: string): QuestionAnswer {
     if (!quotes.includes(quote)) quotes.push(quote);
   }
 
-  const absent = searched.filter((term) => !index.normalizedAll.includes(term));
+  const absent = searched.filter((term) => !matchesTerm(index.normalizedAll, term));
 
   // Split the topics the question raised into the ones the document answers
   // and the ones it is silent about. The split is what lets the summary lead
   // with a gap: a question about protection against late payment is answered
   // by the ABSENCE of a penalty clause, and burying that under the payment
   // clause we did find would be technically responsive and practically a lie.
-  const covered = topics.filter((topic) => topic.expand.some((term) => index.normalizedAll.includes(term)));
+  const covered = topics.filter((topic) => topic.expand.some((term) => matchesTerm(index.normalizedAll, term)));
   const uncovered = topics.filter((topic) => !covered.includes(topic));
 
   return { topics, gapFocused, covered, uncovered, searched, quotes, absent, found: quotes.length > 0 };
@@ -733,7 +733,7 @@ const VAGUE_SCOPE_TERMS = [
   'a ser definido',
   'entre outros',
   'entre outras',
-  ' etc',
+  'etc',
   'demais servicos',
   'demais atividades',
   'servicos correlatos',
@@ -783,7 +783,6 @@ function contractContext(index: IndexedText, charCount: number): ContractContext
       'codigo',
       'design',
       'layout',
-      'marca',
       'conteudo',
       'campanha',
       'site',

@@ -31,6 +31,16 @@ export class S3StorageService {
     }
   }
 
+  /**
+   * Lets a caller skip work it knows cannot land. Uploading is not the point
+   * of every feature that touches storage — course covers degrade to a
+   * generated cover in the client — and for those, a 503 thrown deep inside a
+   * batch is worse than never starting it.
+   */
+  get isConfigured(): boolean {
+    return Boolean(this.client && this.bucket);
+  }
+
   async uploadBuffer(key: string, body: Buffer, contentType: string): Promise<string> {
     if (!this.client || !this.bucket) {
       throw new ServiceUnavailableException(

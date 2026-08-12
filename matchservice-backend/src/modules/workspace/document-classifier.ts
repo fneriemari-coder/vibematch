@@ -1,5 +1,5 @@
 import { WorkspaceDocKind } from '@prisma/client';
-import { normalize } from './text-utils';
+import { matchesTerm, normalize } from './text-utils';
 import { parseTable } from './table-parser';
 
 /**
@@ -113,8 +113,8 @@ export function classifyDocument(
   const scores = SIGNALS.map((signal) => ({
     kind: signal.kind,
     score:
-      signal.content.filter((term) => normalizedText.includes(term)).length * CONTENT_WEIGHT +
-      signal.filename.filter((term) => normalizedName.includes(term)).length * FILENAME_WEIGHT,
+      signal.content.filter((term) => matchesTerm(normalizedText, term)).length * CONTENT_WEIGHT +
+      signal.filename.filter((term) => matchesTerm(normalizedName, term)).length * FILENAME_WEIGHT,
   })).sort((a, b) => b.score - a.score);
 
   const tabular =

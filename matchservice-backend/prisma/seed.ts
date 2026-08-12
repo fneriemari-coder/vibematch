@@ -9,6 +9,8 @@ import {
   NewsCategory,
   NewsMediaKind,
   Role,
+  WorkspaceAnalysisStatus,
+  WorkspaceDocKind,
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
@@ -202,6 +204,29 @@ const CREATORS: SeedCreator[] = [
     role: Role.PROVIDER,
     bio: 'Encanador — instalação e manutenção residencial, autoridade local.',
     skills: ['PLUMBING', 'LOCAL_SERVICE'],
+  },
+  // The workspace's contract and financial analysers ask for CONTROLLER,
+  // FINANCIAL_AUDIT and PAYMENTS. Without a provider carrying those tags the
+  // analysis ends at "contrate um especialista" and matches nobody, which is
+  // precisely the failure the matching exists to prevent.
+  {
+    key: 'controller_br',
+    email: 'seed.creator.controller@matchservice.dev',
+    name: 'Renata Vasconcelos',
+    country: 'BR',
+    role: Role.PROVIDER,
+    bio: 'Controller para PMEs — revisão de contratos, custo por serviço, projeção de caixa e conciliação de recebíveis.',
+    skills: ['CONTROLLER', 'FINANCIAL_AUDIT', 'PAYMENTS'],
+  },
+  {
+    key: 'growth_ops_br',
+    email: 'seed.creator.growthops@matchservice.dev',
+    name: 'Thiago Menezes',
+    country: 'BR',
+    role: Role.BOTH,
+    bio: 'Operações e prospecção B2B — funil, proposta padronizada e primeiros 90 dias de time comercial.',
+    skills: ['STARTUPS', 'B2B_NETWORKING', 'LOCAL_SEO'],
+    b2bNetworking: true,
   },
 ];
 
@@ -427,6 +452,98 @@ const DIAGNOSTICS: SeedDiagnostic[] = [
   },
 ];
 
+/**
+ * One real document in the AI workspace, so the screen is not empty on first
+ * open.
+ *
+ * The contract below is the kind a small installer actually receives: correct
+ * on price and deadline, and silent on every clause that would protect him.
+ * It has no penalty clause at all and its scope is written in open terms
+ * ("demais serviços correlatos", "sempre que solicitado pela fiscalização"),
+ * which is exactly the pair the analyser is built to catch.
+ *
+ * `analysis` below is the verbatim output of the local analyser
+ * (src/modules/workspace/document-analyzer.ts) for this text and this
+ * question. It is transcribed rather than computed at seed time so this file
+ * stays self-contained and `npm run build:seed` keeps compiling on its own —
+ * the same rule DIAGNOSTICS above follows.
+ */
+const WORKSPACE_DOCUMENT = {
+  userKey: 'floor_installer_br',
+  filename: 'contrato-instalacao-vale-verde.txt',
+  mimeType: 'text/plain',
+  kind: WorkspaceDocKind.CONTRATO,
+  daysAgo: 3,
+  text: "CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE INSTALAÇÃO DE PISOS\n\nCONTRATANTE: CONSTRUTORA VALE VERDE EMPREENDIMENTOS LTDA, CNPJ 14.907.332/0001-71.\nCONTRATADA: MARCOS AURÉLIO SILVA ME, CNPJ 29.443.108/0001-06.\n\nCLÁUSULA 1ª - DO OBJETO\nA CONTRATADA executará o fornecimento de mão de obra e a instalação de piso vinílico nas 18 unidades do empreendimento Residencial Aurora, incluindo preparação de contrapiso, rodapés, acabamentos e demais serviços correlatos que se façam necessários à entrega da obra.\n\nCLÁUSULA 2ª - DO REGIME DE EXECUÇÃO\nOs serviços serão executados conforme o cronograma da obra, podendo a CONTRATANTE remanejar as frentes de trabalho sempre que solicitado pela fiscalização, sem alteração do valor contratado.\n\nCLÁUSULA 3ª - DO VALOR E DO PAGAMENTO\nPelo objeto deste contrato a CONTRATANTE pagará à CONTRATADA o valor total de R$ 62.400,00, mediante medições mensais, com pagamento em 30 dias após a apresentação da nota fiscal.\n\nCLÁUSULA 4ª - DO PRAZO\nO prazo de execução é de 120 dias.\n\nCLÁUSULA 5ª - DAS OBRIGAÇÕES DA CONTRATADA\nA CONTRATADA obriga-se a fornecer equipe própria, EPIs e ferramental, e a refazer, às suas expensas, os serviços recusados pela fiscalização da CONTRATANTE.\n\nCLÁUSULA 6ª - DAS DISPOSIÇÕES FINAIS\nAs partes elegem o foro da comarca de Recife/PE para dirimir eventuais dúvidas oriundas deste contrato.\n\nRecife, 02 de junho de 2026.",
+  question: "Esse contrato de instalação me protege se a construtora atrasar o pagamento das medições?",
+  analysis: {
+    headline: "Contrato: sem cláusula de multa, sem cláusula de rescisão e escopo sem fronteira (+2 de risco alto)",
+    summary: "Você perguntou sobre multa e penalidade, prazo e pagamento, e a parte mais importante da resposta é uma ausência: o documento não diz nada sobre multa e penalidade. Procurei por “multa”, “penalidade”, “clausula penal”, “mora”, “sancao” e “perdas e danos” nas 16 linhas e 1.376 caracteres do arquivo e nenhum desses termos aparece — não é interpretação, é busca no texto. Sobre prazo e pagamento o documento fala, e o trecho é este: “Pelo objeto deste contrato a CONTRATANTE pagará à CONTRATADA o valor total de R$ 62.400,00, mediante medições mensais, com pagamento em 30 dias após a apresentação da nota fiscal”. O desequilíbrio está aí: a obrigação está escrita, a proteção contra o descumprimento dela não está.\n\nO arquivo “seed-contrato.txt” é um contrato entre CONTRATANTE e CONTRATADA, com 16 linhas úteis, valores de R$ 62.400,00 e prazos de 30 dias e 120 dias. Ele cobre condições de pagamento, prazo de execução e foro.\n\nO que mais pesa aqui não é o que está escrito, é o que não está. Faltam multa por descumprimento, rescisão, delimitação do escopo e critério de aceite. Repare no encadeamento: o contrato fixa quanto se paga, mas não fixa o que acontece se não se pagar — a obrigação de dinheiro é precisa e a consequência do descumprimento é zero. É a combinação mais desequilibrada possível: quem entrega assume risco datado, quem paga assume risco nenhum.\n\nSe for para mexer em um ponto só antes de assinar, é este: Inserir cláusula penal: multa por atraso na entrega (percentual por dia sobre o valor da parcela, com teto) e multa + juros de mora por atraso no pagamento.",
+    findings: [
+      {
+        title: "Sem cláusula de multa",
+        detail: "O documento cria obrigações mas não estabelece nenhuma consequência para quem as descumprir: não há multa, cláusula penal, juros de mora nem previsão de perdas e danos. Na prática, atrasar a entrega e atrasar o pagamento custam a mesma coisa neste contrato — nada — e a única saída para quem for prejudicado é discutir prejuízo em juízo, provando o dano item a item.",
+        severity: "ALTA",
+      },
+      {
+        title: "Sem cláusula de rescisão",
+        detail: "Não há nada sobre como sair deste contrato: nem prazo de aviso prévio, nem hipóteses de rescisão por justa causa, nem o que acontece com o trabalho já executado e ainda não pago quando alguém quiser encerrar.",
+        severity: "ALTA",
+      },
+      {
+        title: "Escopo sem fronteira",
+        detail: "O documento descreve o que será feito, mas em nenhum ponto diz o que NÃO está incluído. Essa é a lacuna que produz o conflito mais comum em prestação de serviço: cada pedido adicional parece razoável isoladamente, nenhum deles tem preço, e a soma consome a margem inteira do trabalho.",
+        severity: "ALTA",
+      },
+      {
+        title: "Sem critério de aceite",
+        detail: "Não há definição de quando a entrega está aceita: nem prazo para o contratante conferir, nem o que acontece se ele não se manifestar. Sem isso, \"pronto\" é uma opinião, e a parcela final fica presa numa aprovação que pode nunca chegar.",
+        severity: "ALTA",
+      },
+      {
+        title: "Escopo redigido em termos abertos",
+        detail: "2 trechos definem a obrigação com expressões que não delimitam nada: “A CONTRATADA executará o fornecimento de mão de obra e a instalação de piso vinílico nas 18 unidades do empreendimento Residencial Aurora, incluindo preparação de contrapiso, rodapés, acabamentos e demais serviços correlatos que se façam ne…” e “Os serviços serão executados conforme o cronograma da obra, podendo a CONTRATANTE remanejar as frentes de trabalho sempre que solicitado pela fiscalização, sem alteração do valor contratado”. Redação aberta é a forma mais cara de gentileza contratual: ela não gera conflito na assinatura, gera na terceira solicitação extra, quando já não dá para dizer não sem parecer má vontade.",
+        severity: "ALTA",
+      },
+      {
+        title: "Sem cláusula de confidencialidade",
+        detail: "Nada no documento obriga as partes a guardar sigilo sobre dados, preços, base de clientes ou métodos aos quais tiverem acesso durante o trabalho.",
+        severity: "MEDIA",
+      },
+      {
+        title: "Responsabilidade sem teto",
+        detail: "Não há limite para o valor que uma parte pode ser obrigada a indenizar a outra. Em um contrato pequeno, isso significa que uma falha pode custar muitas vezes o valor recebido pelo serviço.",
+        severity: "MEDIA",
+      },
+      {
+        title: "Condições de pagamento",
+        detail: "“Pelo objeto deste contrato a CONTRATANTE pagará à CONTRATADA o valor total de R$ 62.400,00, mediante medições mensais, com pagamento em 30 dias após a apresentação da nota fiscal”. Os valores que aparecem no documento são R$ 62.400,00.",
+        severity: "BAIXA",
+      },
+    ],
+    risks: [
+      "Descumprir este contrato não tem preço definido, então cumprir na data é uma escolha de cada parte, não uma obrigação com custo.",
+      "Qualquer das partes pode simplesmente parar, e o acerto do que já foi feito vira negociação sem regra.",
+      "Sem lista de exclusões, todo pedido novo é interpretado como parte do combinado — e recusar vira problema de relacionamento, não de contrato.",
+      "A última parcela depende de um aceite que ninguém é obrigado a dar em prazo nenhum.",
+      "Informação sensível trocada durante o projeto circula sem obrigação de sigilo.",
+      "Exposição desproporcional ao tamanho do contrato: o prejuízo possível não guarda relação com o valor contratado.",
+    ],
+    actions: [
+      "Inserir cláusula penal: multa por atraso na entrega (percentual por dia sobre o valor da parcela, com teto) e multa + juros de mora por atraso no pagamento.",
+      "Definir aviso prévio (por exemplo 30 dias), as hipóteses de rescisão imediata por justa causa e como se apura o que já foi entregue mas não pago.",
+      "Acrescentar uma lista curta de exclusões (\"não estão incluídos: X, Y, Z\") e a regra de que qualquer item fora dela é orçado à parte por termo aditivo.",
+      "Definir aceite tácito: o contratante tem N dias úteis para apontar divergências por escrito; passado o prazo sem manifestação, a entrega é considerada aceita.",
+      "Inserir cláusula de confidencialidade com prazo de sobrevivência após o fim do contrato (2 a 5 anos é o usual).",
+    ],
+    suggestedSkills: [
+      "CONTROLLER",
+      "FINANCIAL_AUDIT",
+      "STARTUPS",
+    ],
+  },
+};
+
 /** Score rows for the seeded providers — the K-SCORE the mentors directory ranks on. */
 const PROVIDER_SCORES: Array<{ creatorKey: string; kScore: number; completedJobs: number }> = [
   { creatorKey: 'ai_dev_br', kScore: 862, completedJobs: 41 },
@@ -434,6 +551,8 @@ const PROVIDER_SCORES: Array<{ creatorKey: string; kScore: number; completedJobs
   { creatorKey: 'video_editor_br', kScore: 705, completedJobs: 33 },
   { creatorKey: 'floor_installer_br', kScore: 640, completedJobs: 57 },
   { creatorKey: 'plumber_br', kScore: 590, completedJobs: 62 },
+  { creatorKey: 'controller_br', kScore: 815, completedJobs: 34 },
+  { creatorKey: 'growth_ops_br', kScore: 742, completedJobs: 19 },
 ];
 
 /**
@@ -1358,6 +1477,55 @@ async function main() {
     });
   }
 
+  // --- Workspace de análise de documentos ---------------------------------
+  // Scoped the same way as everything above: only this seed's own users are
+  // touched. The analyses cascade off the document, so deleting the documents
+  // is enough — an explicit workspaceAnalysis.deleteMany({}) would reach real
+  // users' rows.
+  await prisma.workspaceDocument.deleteMany({ where: { userId: { in: seedInstructorIds } } });
+
+  {
+    const ownerId = creatorIds.get(WORKSPACE_DOCUMENT.userKey);
+    if (!ownerId) throw new Error(`Unknown workspace document user key: ${WORKSPACE_DOCUMENT.userKey}`);
+
+    const uploadedAt = new Date(now - WORKSPACE_DOCUMENT.daysAgo * DAY_MS);
+    const document = await prisma.workspaceDocument.create({
+      data: {
+        userId: ownerId,
+        filename: WORKSPACE_DOCUMENT.filename,
+        mimeType: WORKSPACE_DOCUMENT.mimeType,
+        // Byte length, not character length — the two differ for accented
+        // Portuguese, and sizeBytes is what the upload route records.
+        sizeBytes: Buffer.byteLength(WORKSPACE_DOCUMENT.text, 'utf8'),
+        kind: WORKSPACE_DOCUMENT.kind,
+        extractedText: WORKSPACE_DOCUMENT.text,
+        charCount: WORKSPACE_DOCUMENT.text.length,
+        // No S3 in a seeded environment, and no fabricated URL either.
+        storageUrl: null,
+        createdAt: uploadedAt,
+      },
+    });
+
+    await prisma.workspaceAnalysis.create({
+      data: {
+        documentId: document.id,
+        userId: ownerId,
+        question: WORKSPACE_DOCUMENT.question,
+        status: WorkspaceAnalysisStatus.READY,
+        headline: WORKSPACE_DOCUMENT.analysis.headline,
+        summary: WORKSPACE_DOCUMENT.analysis.summary,
+        findings: WORKSPACE_DOCUMENT.analysis.findings,
+        risks: WORKSPACE_DOCUMENT.analysis.risks,
+        actions: WORKSPACE_DOCUMENT.analysis.actions,
+        suggestedSkills: WORKSPACE_DOCUMENT.analysis.suggestedSkills,
+        // Produced by the local analyser, not the model — recording that
+        // honestly is the whole point of the flag.
+        aiGenerated: false,
+        createdAt: new Date(uploadedAt.getTime() + 4 * 60 * 1000),
+      },
+    });
+  }
+
   // K-SCORE rows for the seeded providers — without them every mentor ranks
   // at 0 and the Círculos' `minKScore` gate can't be exercised on a fresh DB.
   for (const score of PROVIDER_SCORES) {
@@ -1499,7 +1667,8 @@ async function main() {
     `Seeded ${CREATORS.length} creators, ${POSTS.length} Discovery Feed posts, ` +
       `${COURSES.length} courses, ${MASTERMINDS.length} masterminds, ${MENTORS.length} mentors, ` +
       `${MENTORSHIP_OFFERINGS.length} mentorship offerings, ${DIAGNOSTICS.length} growth diagnostics, ` +
-      `${ARTICLES.length} articles, ${COMMUNITIES.length} communities with ${MEMBERSHIPS.length} active seats ` +
+      `${ARTICLES.length} articles, 1 workspace document with 1 analysis, ` +
+      `${COMMUNITIES.length} communities with ${MEMBERSHIPS.length} active seats ` +
       `and ${NEWS_SOURCES.length} Radar news sources.`,
   );
 }

@@ -5,6 +5,7 @@ import { LazyOpenAI } from '../../common/ai/lazy-openai';
 import PDFDocument from 'pdfkit';
 import { Currency } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { CourseCoverService } from './course-cover.service';
 import { S3StorageService } from '../../common/storage/s3-storage.service';
 import { GenerateAiCourseDto } from './dto/generate-ai-course.dto';
 import { COURSE_GENERATED_EVENT, CourseGeneratedEvent } from '../ai/events/course-generated.event';
@@ -112,6 +113,7 @@ export class AiFactoryService {
     private readonly config: ConfigService,
     private readonly storage: S3StorageService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly courseCovers: CourseCoverService,
   ) {
     this.openai = new LazyOpenAI(this.config.get('OPENAI_API_KEY'), this.logger, 'AI course generation');
     this.model = this.config.get('OPENAI_INTENT_MODEL') ?? 'gpt-4o-mini';
@@ -188,6 +190,21 @@ export class AiFactoryService {
       this.logger.warn(
         `Course ${course.id} published without its PDF material pack: ${error instanceof Error ? error.message : error}`,
       );
+    }
+
+    // Cover art, on the same terms as the PDF: best-effort, and never a reason
+    // to fail a course that already exists. `generateCoverFor` persists the URL
+    // itself, so this runs before the update below and the returned row carries
+    // it. A course that ends up without one still renders — the client draws a
+    // seeded cover from the title whenever `mediaPreviewUrl` is null.
+    if (this.courseCovers.isAvailable) {
+      try {
+        await this.courseCovers.generateCoverFor(course);
+      } catch (error) {
+        this.logger.warn(
+          `Course ${course.id} published without cover art: ${error instanceof Error ? error.message : error}`,
+        );
+      }
     }
 
     const updatedCourse = await this.prisma.businessCourse.update({

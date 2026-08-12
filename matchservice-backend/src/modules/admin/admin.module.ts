@@ -4,6 +4,8 @@ import { AdminController } from './admin.controller';
 import { AdminUsersService } from './admin-users.service';
 import { AdminUsersController } from './admin-users.controller';
 import { AdminNewsController } from './admin-news.controller';
+import { AdminCoursesController } from './admin-courses.controller';
+import { AcademyModule } from '../academy/academy.module';
 import { FeedModule } from '../feed/feed.module';
 import { SwipesModule } from '../swipes/swipes.module';
 import { EscrowModule } from '../escrow/escrow.module';
@@ -18,6 +20,8 @@ import { SimulationController } from './simulation.controller';
   imports: [
     // For NewsIngestionService, which FeedModule owns and exports.
     FeedModule,
+    // For CourseCoverService, likewise owned and exported by AcademyModule.
+    AcademyModule,
     // The behavioural bots and the demo journey deliberately reuse the real
     // services instead of writing rows themselves: SwipesService owns the
     // double opt-in match creation, EscrowService owns the "B2B matches never
@@ -35,6 +39,12 @@ import { SimulationController } from './simulation.controller';
     SimulationJourneyService,
     SimulationBotsScheduler,
   ],
-  controllers: [AdminController, AdminUsersController, AdminNewsController, SimulationController],
+  controllers: [
+    AdminController,
+    AdminUsersController,
+    AdminNewsController,
+    AdminCoursesController,
+    SimulationController,
+  ],
 })
 export class AdminModule {}

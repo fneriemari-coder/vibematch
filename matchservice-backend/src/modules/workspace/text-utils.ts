@@ -65,9 +65,34 @@ export function indexText(text: string): IndexedText {
   };
 }
 
+const termPatterns = new Map<string, RegExp>();
+
+/**
+ * Term matching is always anchored at a word boundary, never a bare
+ * substring.
+ *
+ * This is not a micro-optimisation, it is a correctness rule learned the hard
+ * way: `includes('marca')` fires on "comarca", `includes('mora')` fires on
+ * "demora", `includes('nda')` fires on "mandar". Each one produces a finding
+ * that is specific, confident and about a word the document never used — the
+ * exact failure mode that makes a reader stop trusting an analysis.
+ *
+ * Terms are still matched as PREFIXES of a word, so 'rescis' catches
+ * "rescisão", "rescindir" and "rescisória" with one entry.
+ */
+export function matchesTerm(normalizedText: string, term: string): boolean {
+  let pattern = termPatterns.get(term);
+  if (!pattern) {
+    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    pattern = new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}`, 'u');
+    termPatterns.set(term, pattern);
+  }
+  return pattern.test(normalizedText);
+}
+
 /** True when any of `terms` (already normalized) appears anywhere in the text. */
 export function containsAny(index: IndexedText, terms: string[]): boolean {
-  return terms.some((term) => index.normalizedAll.includes(term));
+  return terms.some((term) => matchesTerm(index.normalizedAll, term));
 }
 
 /**
@@ -78,7 +103,7 @@ export function containsAny(index: IndexedText, terms: string[]): boolean {
 export function quoteFor(index: IndexedText, terms: string[]): string | null {
   const ordered = [...terms].sort((a, b) => b.length - a.length);
   for (const term of ordered) {
-    const at = index.normalizedSentences.findIndex((s) => s.includes(term));
+    const at = index.normalizedSentences.findIndex((sentence) => matchesTerm(sentence, term));
     if (at >= 0) return trimQuote(index.sentences[at]);
   }
   return null;
@@ -88,7 +113,7 @@ export function quoteFor(index: IndexedText, terms: string[]): string | null {
 export function quotesFor(index: IndexedText, terms: string[], limit = 3): string[] {
   const quotes: string[] = [];
   for (let i = 0; i < index.sentences.length && quotes.length < limit; i += 1) {
-    if (terms.some((term) => index.normalizedSentences[i].includes(term))) {
+    if (terms.some((term) => matchesTerm(index.normalizedSentences[i], term))) {
       const quote = trimQuote(index.sentences[i]);
       if (!quotes.includes(quote)) quotes.push(quote);
     }
