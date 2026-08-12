@@ -4,6 +4,7 @@ import {
   ArticleStatus,
   CommunityTier,
   Currency,
+  GrowthPillar,
   MembershipStatus,
   NewsCategory,
   NewsMediaKind,
@@ -63,6 +64,41 @@ interface SeedMentor {
   topics: string[];
   /** ProviderScore.financialHealthScore — the K-SCORE the directory ranks on. */
   kScore: number;
+}
+
+/**
+ * A mentor's paid one-to-one product plus the calendar it is sold against.
+ * `slotOffsets` are resolved against the seed's own `now`, so a fresh database
+ * always has bookable future slots — an offering with only past slots is
+ * invisible to GET /mentorship/offerings by design.
+ */
+interface SeedMentorshipOffering {
+  mentorKey: string;
+  title: string;
+  description: string;
+  durationMinutes: number;
+  price: number;
+  topics: string[];
+  slotOffsets: Array<{ daysFromNow: number; hour: number }>;
+}
+
+/**
+ * A stored radar reading. `situation` is written the way a manager actually
+ * types it — a paragraph of symptoms, not a form — and the scores, summary,
+ * recommendations and skills below are the exact output the local growth
+ * analyser (src/modules/diagnostics/growth-analyzer.ts) produces for that
+ * text. They are transcribed rather than computed so this file stays
+ * self-contained and `npm run build:seed` keeps compiling on its own.
+ */
+interface SeedDiagnostic {
+  userKey: string;
+  situation: string;
+  scores: { vendas: number; gestao: number; tecnologia: number; financas: number };
+  weakestPillar: GrowthPillar;
+  summary: string;
+  recommendations: string[];
+  suggestedSkills: string[];
+  daysAgo: number;
 }
 
 interface SeedArticle {
@@ -279,6 +315,115 @@ const MENTORS: SeedMentor[] = [
     headline: 'Conteúdo e aquisição: como marcas pequenas ganham atenção sem mídia paga',
     topics: ['Conteúdo em vídeo', 'Aquisição orgânica', 'Posicionamento', 'Time de criação'],
     kScore: 705,
+  },
+];
+
+/**
+ * One-to-one mentorship. Each curated mentor publishes exactly one offering,
+ * priced in BRL and sold against a real calendar — GET /mentorship/offerings
+ * only surfaces offerings that have at least one future free slot, so without
+ * these the marketplace is empty on a fresh database.
+ */
+const MENTORSHIP_OFFERINGS: SeedMentorshipOffering[] = [
+  {
+    mentorKey: 'ai_dev_br',
+    title: 'Sessão 1:1: onde automatizar primeiro na sua operação',
+    description: 'Uma hora olhando a sua operação real, não um treinamento genérico. Você traz as tarefas que a sua equipe repete ' +
+      'toda semana — orçamento digitado duas vezes, cadastro copiado de um sistema para outro, atendimento que só ' +
+      'existe no WhatsApp de alguém — e saímos com as três primeiras automações em ordem de retorno, com o que dá ' +
+      'para fazer sem trocar nenhum sistema. Traga print das telas que você usa e um número: quantas horas por ' +
+      'semana essas tarefas consomem hoje.',
+    durationMinutes: 60,
+    price: 690,
+    topics: ['Automação de processos', 'Agentes de IA', 'Integração de sistemas'],
+    slotOffsets: [
+      { daysFromNow: 4, hour: 9 },
+      { daysFromNow: 4, hour: 14 },
+      { daysFromNow: 6, hour: 10 },
+      { daysFromNow: 9, hour: 16 },
+      { daysFromNow: 13, hour: 9 },
+    ],
+  },
+  {
+    mentorKey: 'uiux_designer_br',
+    title: 'Sessão 1:1: por que seu produto não ativa o cliente novo',
+    description: 'Sessão de revisão de produto para quem já tem cliente entrando e perdendo na primeira semana. Passamos pelo seu ' +
+      'fluxo de cadastro até o primeiro valor entregue, marcamos onde o usuário desiste e o que a tela está pedindo ' +
+      'antes da hora. Você sai com um recorte do onboarding, a métrica de ativação que faz sentido para o seu caso e ' +
+      'a lista do que remover — quase sempre o ganho está em tirar, não em acrescentar.',
+    durationMinutes: 60,
+    price: 590,
+    topics: ['Ativação de usuários', 'Design de produto', 'Onboarding', 'Métricas de produto'],
+    slotOffsets: [
+      { daysFromNow: 3, hour: 11 },
+      { daysFromNow: 5, hour: 15 },
+      { daysFromNow: 8, hour: 9 },
+      { daysFromNow: 11, hour: 14 },
+    ],
+  },
+  {
+    mentorKey: 'video_editor_br',
+    title: 'Sessão 1:1: plano de conteúdo para quem não tem verba de mídia',
+    description: 'Para quem precisa aparecer sem verba de mídia. Trazemos o que você já publicou (ou o que pretende publicar), ' +
+      'escolhemos um único ângulo que só a sua empresa consegue defender e montamos o plano das quatro próximas ' +
+      'semanas: formato, gancho dos três primeiros segundos e ritmo de corte. Saímos com dois roteiros prontos para ' +
+      'gravar no celular e o critério para saber se está funcionando sem depender de viralizar.',
+    durationMinutes: 45,
+    price: 390,
+    topics: ['Conteúdo em vídeo', 'Aquisição orgânica', 'Posicionamento'],
+    slotOffsets: [
+      { daysFromNow: 2, hour: 10 },
+      { daysFromNow: 5, hour: 10 },
+      { daysFromNow: 7, hour: 17 },
+      { daysFromNow: 10, hour: 11 },
+      { daysFromNow: 14, hour: 15 },
+      { daysFromNow: 17, hour: 9 },
+    ],
+  },
+];
+
+/**
+ * Two stored radar readings, so the diagnostics screen has history on a fresh
+ * database. Both are written the way a manager actually types the problem —
+ * a paragraph of symptoms — and every score, sentence and skill tag below is
+ * verbatim output of the local growth analyser for that exact text, not
+ * invented copy. `suggestedSkills` therefore names tags real seeded providers
+ * carry, which is what makes the reading matchable.
+ */
+const DIAGNOSTICS: SeedDiagnostic[] = [
+  {
+    userKey: 'floor_installer_br',
+    daysAgo: 12,
+    situation:
+      "Sou instalador de pisos e este ano peguei obra que não parava, mas no fim do mês não sobra nada. Eu não sei quanto custa cada obra de verdade: junto material, ajudante e deslocamento tudo na mesma planilha e chuto o preço em cima do que o concorrente cobra. Como recebo parcelado e pago o material à vista, três vezes precisei antecipar recebível no banco pra fechar a folha. E o orçamento eu ainda faço na mão, de noite, depois da obra.",
+    scores: { vendas: 54, gestao: 70, tecnologia: 50, financas: 33 },
+    weakestPillar: GrowthPillar.FINANCAS,
+    summary:
+      "Finanças é o pilar mais frágil da sua operação hoje: 33/100, contra 70/100 em Gestão. O que puxou esse número foi o que você mesmo escreveu — “Eu não sei quanto custa cada obra de verdade: junto material, ajudante e deslocamento tudo na mesma planilha e chuto o preço em cima do que o concorrente cobra”. Sem saber o custo real de cada entrega, todo preço é chute: dá para estar vendendo muito bem exatamente aquilo que dá prejuízo, e recusando o que dava margem.\n\nSome a isso caixa sem projeção, que aparece quando você diz “Sou instalador de pisos e este ano peguei obra que não parava, mas no fim do mês não sobra nada”. Caixa que só aparece quando já apertou é problema de projeção, não de faturamento — o mesmo aperto é visível com seis semanas de antecedência numa projeção rolante. Os dois juntos explicam por que Finanças ficou abaixo dos outros pilares: não é um problema isolado, é um padrão que se repete na semana.\n\nTecnologia vem logo atrás (50/100), puxada por trabalho manual repetitivo e planilha usada como sistema — trate depois de estabilizar Finanças, ou você divide a atenção entre duas frentes e não resolve nenhuma.\n\nGestão não apareceu no seu relato e ficou na linha de base (70/100). Isso quer dizer \"sem evidência\", não \"está resolvido\" — este diagnóstico só pontua o que você descreveu.\n\nO primeiro passo é objetivo: levantar o custo real por serviço (mão de obra + insumo + rateio de estrutura) antes de mexer em qualquer preço.",
+    recommendations: [
+      "Levantar o custo real por serviço (mão de obra + insumo + rateio de estrutura) antes de mexer em qualquer preço.",
+      "Montar a projeção de caixa rolante de 13 semanas e reatualizá-la toda segunda-feira.",
+      "Medir o ciclo de caixa em dias e renegociar prazo com os três maiores fornecedores antes de tomar mais crédito.",
+      "Automatizar emissão e conciliação da cobrança, com uma tela única de \"faturado x recebido\" fechando todo dia.",
+    ],
+    suggestedSkills: ["CONTROLLER", "FINANCIAL_AUDIT", "PAYMENTS", "STRIPE_WEBHOOK", "AI_AUTOMATION"],
+  },
+  {
+    userKey: 'growth_client_us',
+    daysAgo: 4,
+    situation:
+      "Minha agência em Austin trabalha com times brasileiros e o problema não é entrega, é venda. Entra bastante lead pelo site e pelas indicações dos clientes antigos, mas eu não consigo fechar: mando a proposta e o cliente some, aí eu dou desconto pra tentar salvar e mesmo assim some. Não tenho funil nenhum, o acompanhamento vive espalhado entre WhatsApp e e-mail, e não sei dizer quantas propostas mandei mês passado.",
+    scores: { vendas: 35, gestao: 70, tecnologia: 53, financas: 70 },
+    weakestPillar: GrowthPillar.VENDAS,
+    summary:
+      "Vendas é o pilar mais frágil da sua operação hoje: 35/100, contra 70/100 em Gestão. O que puxou esse número foi o que você mesmo escreveu — “Entra bastante lead pelo site e pelas indicações dos clientes antigos, mas eu não consigo fechar: mando a proposta e o cliente some, aí eu dou desconto pra tentar salvar e mesmo assim some”. Quando o contato chega e não fecha, o furo está entre a conversa e a proposta: falta ancorar o resultado antes de mostrar o preço, e falta um retorno com data marcada na frente do cliente.\n\nSome a isso funil sem visibilidade, que aparece quando você diz “Não tenho funil nenhum, o acompanhamento vive espalhado entre WhatsApp e e-mail, e não sei dizer quantas propostas mandei mês passado”. Sem registro de etapa e de próximo passo, \"como estão as vendas\" é opinião, não número — e o contato que sumiu no meio nunca é percebido. Os dois juntos explicam por que Vendas ficou abaixo dos outros pilares: não é um problema isolado, é um padrão que se repete na semana.\n\nTecnologia vem logo atrás (53/100), puxada por operação inteira no WhatsApp e presença digital fraca — trate depois de estabilizar Vendas, ou você divide a atenção entre duas frentes e não resolve nenhuma.\n\nGestão e Finanças não apareceram no seu relato e ficaram na linha de base (70/100). Isso quer dizer \"sem evidência\", não \"está resolvido\" — este diagnóstico só pontua o que você descreveu.\n\nO primeiro passo é objetivo: padronizar a proposta em uma página (problema, escopo, resultado esperado, preço) e marcar o follow-up com o cliente ainda na reunião.",
+    recommendations: [
+      "Padronizar a proposta em uma página (problema, escopo, resultado esperado, preço) e marcar o follow-up com o cliente ainda na reunião.",
+      "Definir três perguntas de qualificação no primeiro contato e recusar rápido quem não passa — isso devolve tempo comercial para quem fecha.",
+      "Trocar desconto por escopo: ofereça uma versão menor por um preço menor, nunca o mesmo escopo mais barato.",
+      "Criar um modelo de orçamento com faixas de escopo já precificadas, para responder no mesmo dia sem recalcular do zero.",
+    ],
+    suggestedSkills: ["B2B_NETWORKING", "STARTUPS", "LOCAL_SEO", "AI_AUTOMATION", "SaaS"],
   },
 ];
 
@@ -1149,6 +1294,70 @@ async function main() {
     });
   }
 
+  // --- Mentoria individual (one-to-one) -----------------------------------
+  // Same scoped-reset rule as everywhere else in this file: bookings are
+  // removed first and scoped both ways (a seat held BY a seeded user, and a
+  // seat ON an offering hosted by one), then the offerings themselves. The
+  // offering delete would cascade to slots and bookings anyway; doing it
+  // explicitly keeps a real user's booking on a real mentor's calendar out of
+  // the blast radius.
+  await prisma.mentorshipBooking.deleteMany({
+    where: {
+      OR: [{ menteeId: { in: seedInstructorIds } }, { offering: { mentorId: { in: seedInstructorIds } } }],
+    },
+  });
+  await prisma.mentorshipOffering.deleteMany({ where: { mentorId: { in: seedInstructorIds } } });
+
+  for (const offering of MENTORSHIP_OFFERINGS) {
+    const mentorId = creatorIds.get(offering.mentorKey);
+    if (!mentorId) throw new Error(`Unknown mentorship mentor key: ${offering.mentorKey}`);
+
+    await prisma.mentorshipOffering.create({
+      data: {
+        mentorId,
+        title: offering.title,
+        description: offering.description,
+        durationMinutes: offering.durationMinutes,
+        price: offering.price,
+        // All three mentors are BR — priced in the currency the buyer pays in.
+        currency: Currency.BRL,
+        topics: offering.topics,
+        slots: {
+          create: offering.slotOffsets.map((slot) => ({
+            startsAt: slotInstant(now, slot.daysFromNow, slot.hour),
+          })),
+        },
+      },
+    });
+  }
+
+  // --- Diagnósticos de crescimento ----------------------------------------
+  await prisma.growthDiagnostic.deleteMany({ where: { userId: { in: seedInstructorIds } } });
+
+  for (const diagnostic of DIAGNOSTICS) {
+    const userId = creatorIds.get(diagnostic.userKey);
+    if (!userId) throw new Error(`Unknown diagnostic user key: ${diagnostic.userKey}`);
+
+    await prisma.growthDiagnostic.create({
+      data: {
+        userId,
+        situation: diagnostic.situation,
+        scoreVendas: diagnostic.scores.vendas,
+        scoreGestao: diagnostic.scores.gestao,
+        scoreTecnologia: diagnostic.scores.tecnologia,
+        scoreFinancas: diagnostic.scores.financas,
+        weakestPillar: diagnostic.weakestPillar,
+        summary: diagnostic.summary,
+        recommendations: diagnostic.recommendations,
+        suggestedSkills: diagnostic.suggestedSkills,
+        // These readings were produced by the local analyser, not the model —
+        // recording that honestly is the whole point of the flag.
+        aiGenerated: false,
+        createdAt: new Date(now - diagnostic.daysAgo * DAY_MS),
+      },
+    });
+  }
+
   // K-SCORE rows for the seeded providers — without them every mentor ranks
   // at 0 and the Círculos' `minKScore` gate can't be exercised on a fresh DB.
   for (const score of PROVIDER_SCORES) {
@@ -1289,9 +1498,22 @@ async function main() {
   console.log(
     `Seeded ${CREATORS.length} creators, ${POSTS.length} Discovery Feed posts, ` +
       `${COURSES.length} courses, ${MASTERMINDS.length} masterminds, ${MENTORS.length} mentors, ` +
+      `${MENTORSHIP_OFFERINGS.length} mentorship offerings, ${DIAGNOSTICS.length} growth diagnostics, ` +
       `${ARTICLES.length} articles, ${COMMUNITIES.length} communities with ${MEMBERSHIPS.length} active seats ` +
       `and ${NEWS_SOURCES.length} Radar news sources.`,
   );
+}
+
+/**
+ * Resolves a slot offset against the seed's own `now`, normalized to the top
+ * of the hour in the server's timezone. Offsets rather than fixed dates so a
+ * database seeded today always has bookable slots in the future — an offering
+ * whose slots have all passed never appears in GET /mentorship/offerings.
+ */
+function slotInstant(now: number, daysFromNow: number, hour: number): Date {
+  const instant = new Date(now + daysFromNow * DAY_MS);
+  instant.setHours(hour, 0, 0, 0);
+  return instant;
 }
 
 /**

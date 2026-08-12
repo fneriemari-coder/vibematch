@@ -9,6 +9,9 @@ function buildService(prisma: any, config = buildConfig()) {
   const academyService = { completePurchase: jest.fn() };
   const mastermindService = { completeBooking: jest.fn() };
   const communitiesService = { completeMembership: jest.fn() };
+  // Only reached by the mentorship_booking branch, which these tests do not
+  // exercise — present so the constructor arity matches.
+  const mentorshipService = { completeBooking: jest.fn() };
   const connectService = { payoutOrLedgerOnly: jest.fn().mockResolvedValue({ stripeTransferId: 'tr_1' }) };
   const service = new StripeWebhookService(
     prisma,
@@ -16,6 +19,7 @@ function buildService(prisma: any, config = buildConfig()) {
     academyService as any,
     mastermindService as any,
     communitiesService as any,
+    mentorshipService as any,
     connectService as any,
   );
   return { service, academyService, mastermindService, communitiesService, connectService };

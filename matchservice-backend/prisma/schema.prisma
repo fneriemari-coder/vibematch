@@ -223,6 +223,28 @@ enum NewsMediaKind {
   PAPER
 }
 
+/// The four axes every GrowthDiagnostic scores a company on. Deliberately a
+/// closed enum and deliberately exactly four: the client renders them as a
+/// radar chart, and the whole recommendation chain (which course, which
+/// mentor, which providers to match) keys off `weakestPillar`. A fifth axis
+/// would break both.
+enum GrowthPillar {
+  VENDAS
+  GESTAO
+  TECNOLOGIA
+  FINANCAS
+}
+
+/// Lifecycle of a one-to-one mentorship seat. PENDING is written when Checkout
+/// opens; only a real `checkout.session.completed` promotes it to CONFIRMED
+/// (see MentorshipService.completeBooking), which is also the only place the
+/// slot itself is marked booked.
+enum MentorshipBookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELED
+}
+
 // ---------------------------------------------------------------------------
 // Models
 // ---------------------------------------------------------------------------
@@ -306,6 +328,10 @@ model User {
   savedNewsItems SavedNewsItem[]
 
   authTokens AuthToken[]
+
+  growthDiagnostics   GrowthDiagnostic[]
+  mentorshipOfferings MentorshipOffering[] @relation("MentorshipMentor")
+  mentorshipBookings  MentorshipBooking[]  @relation("MentorshipMentee")
 
   @@map("users")
 }
@@ -720,6 +746,14 @@ model BusinessCourse {
   // which matches these against UserProfile.skills / PostTag.tagName.
   skillsTaught String[] @default([]) @map("skills_taught")
 
+  // True for courses produced by AiFactoryService. This used to be encoded by
+  // pushing the literal string 'AI_GENERATED' into `skillsTaught` above, which
+  // polluted the one field the platform matches providers and Discovery Feed
+  // posts on — a marker word competing with real market skill tags. The
+  // migration that added this column also backfilled it and stripped the
+  // marker out of the arrays.
+  isAiGenerated Boolean @default(false) @map("is_ai_generated")
+
   // pdfkit-generated executive summary + implementation checklist + swipe-deck
   // link, uploaded to S3 by ai-factory.service.ts / certificate.service.ts.
   materialDownloadUrl String? @map("material_download_url")
@@ -839,9 +873,9 @@ model QuizAttempt {
 }
 
 model IssuedCertificate {
-  id              String   @id @default(uuid())
-  userId          String   @map("user_id")
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String         @id @default(uuid())
+  userId          String         @map("user_id")
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   courseId        String         @map("course_id")
   // Was a bare String with no relation, so deleting a course silently
   // orphaned every certificate that referenced it. Restrict, not Cascade —
@@ -1088,4 +1122,137 @@ model ProcessedStripeEvent {
 
   @@index([processedAt])
   @@map("processed_stripe_events")
+}
+
+// ---------------------------------------------------------------------------
+// Growth diagnostics — the education-originates-business mechanism
+// ---------------------------------------------------------------------------
+
+/// One radar-chart reading of a company, produced from a manager's plain-text
+/// description of the problem they are living with.
+///
+/// The scores are the visible half; `weakestPillar` is the load-bearing half —
+/// it is what the platform recommends against (which course, which mentor,
+/// which providers). `suggestedSkills` is what turns the reading into a
+/// briefing: it carries the same uppercase market skill tags that live on
+/// `UserProfile.skills` and `PostTag.tagName`, so a diagnostic can be handed
+/// straight to matching and come back with real people.
+///
+/// `aiGenerated` records which path produced the row — the model, or the
+/// deterministic local analyser in `growth-analyzer.ts`. Both write the same
+/// shape on purpose; the flag exists so a reading can be audited, not so the
+/// client can render two different things.
+model GrowthDiagnostic {
+  id     String @id @default(uuid())
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Verbatim text the manager wrote — kept in full because the summary
+  /// quotes it back and because it is the only reproducible input to a
+  /// re-scoring.
+  situation String @db.Text
+
+  scoreVendas     Int @map("score_vendas")
+  scoreGestao     Int @map("score_gestao")
+  scoreTecnologia Int @map("score_tecnologia")
+  scoreFinancas   Int @map("score_financas")
+
+  weakestPillar GrowthPillar @map("weakest_pillar")
+  summary       String       @db.Text
+
+  recommendations String[] @default([])
+  suggestedSkills String[] @default([]) @map("suggested_skills")
+
+  aiGenerated Boolean @default(false) @map("ai_generated")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@map("growth_diagnostics")
+}
+
+// ---------------------------------------------------------------------------
+// One-to-one mentorship (LiveMastermindSession is the group counterpart)
+// ---------------------------------------------------------------------------
+
+/// A mentor's published individual-session product: what it is, how long it
+/// runs, what it costs. Only a user whose profile carries `isMentor` — the
+/// admin-granted, never self-set flag — may publish one.
+model MentorshipOffering {
+  id       String @id @default(uuid())
+  mentorId String @map("mentor_id")
+  mentor   User   @relation("MentorshipMentor", fields: [mentorId], references: [id], onDelete: Cascade)
+
+  title           String
+  description     String   @db.Text
+  durationMinutes Int      @map("duration_minutes")
+  price           Decimal  @db.Decimal(10, 2)
+  currency        Currency
+  topics          String[] @default([])
+  active          Boolean  @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  slots    MentorshipSlot[]
+  bookings MentorshipBooking[]
+
+  @@index([mentorId])
+  @@map("mentorship_offerings")
+}
+
+/// A concrete bookable instant on a mentor's calendar.
+///
+/// `booked` is written in exactly one place — the transaction in
+/// `MentorshipService.completeBooking`, driven by a real Stripe event — and
+/// the conditional update there is what makes two concurrent webhook
+/// deliveries unable to sell the same slot twice.
+model MentorshipSlot {
+  id         String             @id @default(uuid())
+  offeringId String             @map("offering_id")
+  offering   MentorshipOffering @relation(fields: [offeringId], references: [id], onDelete: Cascade)
+
+  startsAt DateTime @map("starts_at")
+  booked   Boolean  @default(false)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  booking MentorshipBooking?
+
+  /// A mentor cannot publish the same instant twice on one offering.
+  @@unique([offeringId, startsAt])
+  @@index([startsAt, booked])
+  @@map("mentorship_slots")
+}
+
+/// A mentee's seat in one mentorship slot.
+///
+/// `slotId` is unique: the database, not application logic, is what guarantees
+/// a slot is sold at most once — even to two different mentees racing through
+/// Checkout at the same moment.
+model MentorshipBooking {
+  id     String         @id @default(uuid())
+  slotId String         @unique @map("slot_id")
+  slot   MentorshipSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+
+  offeringId String             @map("offering_id")
+  offering   MentorshipOffering @relation(fields: [offeringId], references: [id], onDelete: Cascade)
+
+  menteeId String @map("mentee_id")
+  mentee   User   @relation("MentorshipMentee", fields: [menteeId], references: [id], onDelete: Cascade)
+
+  status    MentorshipBookingStatus @default(PENDING)
+  pricePaid Decimal                 @map("price_paid") @db.Decimal(10, 2)
+  currency  Currency
+
+  /// Set by the mentor once the call link exists — never fabricated, same
+  /// rule LiveMastermindSession.liveStreamUrl follows.
+  meetingUrl              String? @map("meeting_url")
+  stripeCheckoutSessionId String? @map("stripe_checkout_session_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([menteeId, createdAt])
+  @@index([offeringId])
+  @@map("mentorship_bookings")
 }

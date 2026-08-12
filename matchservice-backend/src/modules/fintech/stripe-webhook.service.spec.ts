@@ -5,6 +5,10 @@ function buildConfig(overrides: Record<string, string> = {}) {
   return { get: jest.fn((key: string) => overrides[key]) };
 }
 
+// Only reached by the mentorship_booking branch, which these tests do not
+// exercise — present so the constructor arity matches.
+const mentorshipService = { completeBooking: jest.fn() };
+
 describe('StripeWebhookService — maintenance revenue split', () => {
   it('splits a paid maintenance invoice 85/15 (default take rate) and credits only the provider wallet', async () => {
     const prisma: any = {
@@ -25,7 +29,7 @@ describe('StripeWebhookService — maintenance revenue split', () => {
     const communitiesService = { completeMembership: jest.fn() };
     const connectService = { payoutOrLedgerOnly: jest.fn().mockResolvedValue({ stripeTransferId: null }) };
 
-    const service = new StripeWebhookService(prisma, buildConfig() as any, academyService as any, mastermindService as any, communitiesService as any, connectService as any);
+    const service = new StripeWebhookService(prisma, buildConfig() as any, academyService as any, mastermindService as any, communitiesService as any, mentorshipService as any, connectService as any);
 
     const invoice: any = { id: 'in_123', amount_paid: 20000 }; // $200.00 in cents
 
@@ -69,7 +73,7 @@ describe('StripeWebhookService — maintenance revenue split', () => {
     const mastermindService = { completeBooking: jest.fn() };
     const communitiesService = { completeMembership: jest.fn() };
     const connectService = { payoutOrLedgerOnly: jest.fn().mockResolvedValue({ stripeTransferId: null }) };
-    const service = new StripeWebhookService(prisma, buildConfig() as any, academyService as any, mastermindService as any, communitiesService as any, connectService as any);
+    const service = new StripeWebhookService(prisma, buildConfig() as any, academyService as any, mastermindService as any, communitiesService as any, mentorshipService as any, connectService as any);
 
     await (service as any).handleMaintenanceInvoicePaid('agreement-2', { id: 'in_456', amount_paid: 10000 });
 

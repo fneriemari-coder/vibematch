@@ -20,6 +20,8 @@ import { CommunitiesModule } from './modules/communities/communities.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { MediaModule } from './modules/media/media.module';
 import { MastermindModule } from './modules/mastermind/mastermind.module';
+import { MentorshipModule } from './modules/mentorship/mentorship.module';
+import { DiagnosticsModule } from './modules/diagnostics/diagnostics.module';
 import { HealthModule } from './modules/health/health.module';
 import { ObservabilityModule } from './common/observability/observability.module';
 
@@ -49,6 +51,8 @@ import { ObservabilityModule } from './common/observability/observability.module
     AdminModule,
     MediaModule,
     MastermindModule,
+    MentorshipModule,
+    DiagnosticsModule,
     HealthModule,
     ObservabilityModule,
   ],

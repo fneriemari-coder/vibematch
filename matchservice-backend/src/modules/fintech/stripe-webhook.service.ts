@@ -13,6 +13,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { AcademyService } from '../academy/academy.service';
 import { MastermindService } from '../mastermind/mastermind.service';
 import { CommunitiesService } from '../communities/communities.service';
+import { MentorshipService } from '../mentorship/mentorship.service';
 import { ConnectService } from './connect.service';
 
 /**
@@ -35,6 +36,7 @@ export class StripeWebhookService {
     private readonly academyService: AcademyService,
     private readonly mastermindService: MastermindService,
     private readonly communitiesService: CommunitiesService,
+    private readonly mentorshipService: MentorshipService,
     private readonly connectService: ConnectService,
   ) {
     this.stripe = new Stripe(this.config.get('STRIPE_SECRET_KEY') ?? '', {
@@ -395,6 +397,11 @@ export class StripeWebhookService {
 
     if (kind === 'mastermind_booking') {
       await this.mastermindService.completeBooking(session);
+      return;
+    }
+
+    if (kind === 'mentorship_booking') {
+      await this.mentorshipService.completeBooking(session);
       return;
     }
 

@@ -140,13 +140,19 @@ export class AiFactoryService {
     const currency = instructor.country === 'BR' ? Currency.BRL : Currency.USD;
     const price = currency === Currency.BRL ? DEFAULT_PRICE_BRL : DEFAULT_PRICE_USD;
 
-    // De-duplicated so re-publishing a scope that already names the marker
-    // (e.g. one round-tripped through the model) can't stack it twice.
-    const skillsTaught = [...new Set([...scope.skillsTaught, AI_GENERATED_COURSE_TAG])];
+    // Provenance lives on `isAiGenerated`, not in `skillsTaught`. The marker
+    // used to be pushed into that array, but it is the field matched against
+    // provider profiles and post tags by getCourseConnections — a synthetic
+    // entry there quietly skewed skill matching. Strip it if a round-tripped
+    // scope names it, so the pollution cannot come back through the model.
+    const skillsTaught = [...new Set(scope.skillsTaught)].filter(
+      (skill) => skill !== AI_GENERATED_COURSE_TAG,
+    );
 
     const course = await this.prisma.businessCourse.create({
       data: {
         instructorId,
+        isAiGenerated: true,
         title: scope.courseTitle,
         description: scope.commercialDescription,
         price,
