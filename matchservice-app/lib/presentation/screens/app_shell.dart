@@ -7,6 +7,7 @@ import '../../data/repositories/chat_repository.dart';
 import '../../data/repositories/community_repository.dart';
 import '../../data/repositories/escrow_repository.dart';
 import '../../data/repositories/mastermind_repository.dart';
+import '../../data/repositories/mentorship_repository.dart';
 import '../../data/models/feed_models.dart';
 import '../../logic/feed/feed_cubit.dart';
 import '../../logic/swipe/swipe_cubit.dart';
@@ -62,6 +63,7 @@ class _AppShellState extends State<AppShell> {
         academyRepository: context.read<AcademyRepository>(),
         mastermindRepository: context.read<MastermindRepository>(),
         communityRepository: context.read<CommunityRepository>(),
+        mentorshipRepository: context.read<MentorshipRepository>(),
       ),
       DealsScreen(escrowRepository: context.read<EscrowRepository>()),
     ];

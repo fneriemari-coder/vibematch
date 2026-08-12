@@ -12,7 +12,9 @@ import 'data/repositories/auth_repository.dart';
 import 'data/repositories/chat_repository.dart';
 import 'data/repositories/community_repository.dart';
 import 'data/repositories/content_repository.dart';
+import 'data/repositories/diagnostic_repository.dart';
 import 'data/repositories/escrow_repository.dart';
+import 'data/repositories/mentorship_repository.dart';
 import 'data/repositories/feed_repository.dart';
 import 'data/repositories/mastermind_repository.dart';
 import 'data/repositories/media_repository.dart';
@@ -26,6 +28,7 @@ import 'presentation/screens/vibe_academy_screen.dart';
 import 'presentation/screens/auth_screen.dart';
 import 'presentation/screens/data_privacy_screen.dart';
 import 'presentation/screens/deals_screen.dart';
+import 'presentation/screens/diagnostic_screen.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
@@ -127,6 +130,12 @@ class _MatchServiceAppState extends State<MatchServiceApp> {
           create: (_) => CommunityRepository(widget.dioClient),
         ),
         RepositoryProvider(create: (_) => EscrowRepository(widget.dioClient)),
+        RepositoryProvider(
+          create: (_) => DiagnosticRepository(widget.dioClient),
+        ),
+        RepositoryProvider(
+          create: (_) => MentorshipRepository(widget.dioClient),
+        ),
       ],
       child: BlocProvider(
         create: (context) => AuthCubit(widget.authRepository)..bootstrap(),
@@ -150,6 +159,13 @@ class _MatchServiceAppState extends State<MatchServiceApp> {
               return MaterialPageRoute(
                 builder: (_) => DealsScreen(
                   escrowRepository: EscrowRepository(widget.dioClient),
+                ),
+              );
+            }
+            if (settings.name == '/diagnostic') {
+              return MaterialPageRoute(
+                builder: (_) => DiagnosticScreen(
+                  diagnosticRepository: DiagnosticRepository(widget.dioClient),
                 ),
               );
             }

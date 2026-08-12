@@ -7,6 +7,7 @@ import '../../data/models/mastermind_models.dart';
 import '../../data/models/user_models.dart';
 import '../../data/repositories/admin_repository.dart';
 import '../../data/repositories/content_repository.dart';
+import '../../data/repositories/diagnostic_repository.dart';
 import '../../data/repositories/mastermind_repository.dart';
 import '../../data/repositories/wallet_repository.dart';
 import '../../logic/auth/auth_cubit.dart';
@@ -16,6 +17,7 @@ import '../widgets/vibe_ui.dart';
 import 'admin_dashboard.dart';
 import 'admin_users_screen.dart';
 import 'content_screen.dart';
+import 'diagnostic_screen.dart';
 import 'swipe_deck_screen.dart';
 import 'wallet_screen.dart';
 
@@ -81,6 +83,10 @@ class _HomeToggleScreenState extends State<HomeToggleScreen> {
         child: CustomScrollView(
           slivers: [
             SliverToBoxAdapter(child: _hero(isAdmin: isAdmin)),
+            const SliverToBoxAdapter(
+              child: SizedBox(height: VibeMatchSpacing.sectionGap),
+            ),
+            SliverToBoxAdapter(child: _diagnosticBand()),
             const SliverToBoxAdapter(
               child: SizedBox(height: VibeMatchSpacing.sectionGap),
             ),
@@ -218,6 +224,84 @@ class _HomeToggleScreenState extends State<HomeToggleScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  // --- Diagnostic ---------------------------------------------------------
+
+  /// Sits directly under the hero, above the discovery modes, because it is
+  /// the entry point that makes the rest of the product make sense: it turns
+  /// "eu tenho um problema" into a scored brief, and the brief is what the
+  /// matching engine, the courses and the mentors all key off.
+  Widget _diagnosticBand() {
+    return VibeContent(
+      child: VibeCard(
+        highlighted: true,
+        padding: const EdgeInsets.all(22),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => DiagnosticScreen(
+              diagnosticRepository: context.read<DiagnosticRepository>(),
+            ),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text('DIAGNÓSTICO', style: VibeMatchTextStyles.eyebrow),
+                const SizedBox(width: 8),
+                const VibeTag(label: 'Gratuito'),
+              ],
+            ),
+            const SizedBox(height: 12),
+            RichText(
+              text: TextSpan(
+                style: VibeMatchTextStyles.sectionTitle,
+                children: [
+                  const TextSpan(text: 'Descubra onde sua empresa'),
+                  TextSpan(
+                    text: ' está travando.',
+                    style: VibeMatchTextStyles.sectionTitleAccent,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Conte o que está acontecendo, em suas palavras. Devolvemos uma '
+              'nota de 0 a 100 em Vendas, Gestão, Tecnologia e Finanças — e '
+              'quem contratar para resolver o pilar mais fraco.',
+              style: VibeMatchTextStyles.body,
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => DiagnosticScreen(
+                        diagnosticRepository:
+                            context.read<DiagnosticRepository>(),
+                      ),
+                    ),
+                  ),
+                  icon: const Icon(Icons.radar_rounded, size: 18),
+                  label: const Text('Fazer diagnóstico'),
+                ),
+                const SizedBox(width: 12),
+                Flexible(
+                  child: Text(
+                    'Leva de 10 a 30 segundos.',
+                    style: VibeMatchTextStyles.caption,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
