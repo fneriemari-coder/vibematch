@@ -56,7 +56,13 @@ jobs:
         run: npx prisma migrate deploy
 
       - name: Typecheck
-        run: npx tsc --noEmit -p tsconfig.json
+        run: npm run typecheck
+
+      # The prisma/*.ts console scripts sit outside tsconfig.json, so the step
+      # above never saw them. Without this, a break in one of them surfaced
+      # only in the Docker image build at the very end of the run.
+      - name: Typecheck the seed scripts
+        run: npm run typecheck:seeds
 
       - name: Lint
         run: npx eslint "src/**/*.ts" --max-warnings=0

@@ -31,13 +31,20 @@ RUN npm run build
 # on demand from the platform's shell — `npm run seed:prod`.
 RUN npm run build:seed
 
-# Same reasoning, two more on-demand console scripts: the simulated-population
-# generator (`npm run seed:sim`) and the AI course catalogue
-# (`npm run seed:ai-courses`). Neither runs at build or boot time — they are
+# Same reasoning, three more on-demand console scripts: the operator account
+# (`npm run seed:admin`), the simulated-population generator
+# (`npm run seed:sim`) and the AI course catalogue
+# (`npm run seed:ai-courses`). None runs at build or boot time — they are
 # compiled here only so the production image actually contains them when the
 # owner opens a shell on the platform. Skipping this step is invisible locally
 # (ts-node covers it) and only fails in production, where there is no ts-node
 # and no src/ to compile from.
+#
+# build:seed-admin was missing here while package.json still advertised
+# `seed:admin`, so the one command that creates the operator account failed on
+# a fresh production image with "Cannot find module dist-seed/seed-admin.js" —
+# and no admin route is reachable until that account exists.
+RUN npm run build:seed-admin
 RUN npm run build:seed-sim
 RUN npm run build:seed-ai-courses
 

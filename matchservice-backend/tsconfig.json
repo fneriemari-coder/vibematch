@@ -29,8 +29,11 @@
       "@modules/*": ["src/modules/*"]
     }
   },
-  // Scoped to src/ so rootDir above holds. prisma/seed.ts is intentionally
-  // out: it's never compiled, only run through ts-node (npm run prisma:seed).
+  // Scoped to src/ so rootDir above holds. The prisma/*.ts scripts are
+  // intentionally out — they compile to dist-seed/ through their own
+  // `build:seed*` commands, not through this project. Because that leaves
+  // them unchecked here, tsconfig.seed.json typechecks them separately and
+  // CI runs it (`npm run typecheck:seeds`) right after this one.
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
 }
