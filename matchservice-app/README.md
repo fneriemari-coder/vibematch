@@ -6,12 +6,25 @@ advance, and a locale-aware Premium paywall.
 
 ## Live web preview
 
-`main` auto-deploys a `flutter build web --release` to GitHub Pages on every
-push (`.github/workflows/deploy-web.yml`): **https://fneriemari-coder.github.io/vibematch/**
+`main` auto-deploys on every push through `.github/workflows/deploy-web.yml`,
+which publishes two things to GitHub Pages from a single artifact:
 
-UI-only — `API_BASE_URL` there is a placeholder until a backend is actually
-hosted somewhere reachable, so anything that hits the API (login, feed data,
-payments, chat) will show a network error. Every screen renders.
+| URL | What |
+|---|---|
+| https://fneriemari-coder.github.io/vibematch/ | `demo/tracao-continua.html`, the pitch prototype — self-contained, no backend |
+| https://fneriemari-coder.github.io/vibematch/app/ | this app, `flutter build web --release` |
+
+The build points `API_BASE_URL` at the Railway deployment (override it with an
+`API_BASE_URL` repository variable). Every screen renders regardless, but
+anything that hits the API — login, feed data, payments, chat — needs two
+things to be true on the server side:
+
+- the API is actually up: `GET /health` returns `{"status":"ok","db":"up"}`;
+  `GET /health/integrations` reports which optional integrations have
+  credentials, as booleans;
+- `CORS_ORIGIN` includes `https://fneriemari-coder.github.io`. It is read as
+  `(CORS_ORIGIN ?? '').split(',')`, so leaving it unset allows *no* origin and
+  the browser blocks every request even against a perfectly healthy API.
 
 ## Verified against the real Flutter toolchain (CI, not locally)
 

@@ -1,4 +1,18 @@
-name: Deploy Web Preview
+name: Publish to GitHub Pages
+
+# One workflow, one artifact, one deployment. There used to be two —
+# deploy-web.yml on every push and publicar-prototipo.yml on demo changes —
+# both writing to the same Pages site under the same `pages` concurrency
+# group. Whichever finished last won, so the site's content depended on which
+# files a commit happened to touch: the merge of #1 touched neither the demo
+# nor its workflow, so only the Flutter job ran and the prototype published
+# minutes earlier was overwritten. Both artifacts now ship together:
+#
+#   /vibematch/       → demo/tracao-continua.html, the pitch prototype
+#   /vibematch/app/   → the Flutter web build
+#
+# Neither can displace the other, and the URLs no longer depend on which
+# paths a commit touched.
 
 on:
   push:
@@ -15,14 +29,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-deploy:
+  publish:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    defaults:
-      run:
-        working-directory: matchservice-app
     steps:
       - uses: actions/checkout@v4
 
@@ -31,7 +42,9 @@ jobs:
           flutter-version: '3.24.0'
           channel: 'stable'
 
-      - run: flutter pub get
+      - name: flutter pub get
+        working-directory: matchservice-app
+        run: flutter pub get
 
       # Points at the live Railway deployment. Override per-environment by
       # setting an API_BASE_URL repository variable — that wins over the
@@ -45,15 +58,30 @@ jobs:
       # variable expands to an empty string, and String.fromEnvironment treats
       # an explicitly-empty value as set — which would silently override the
       # real key with nothing and disable web push.
+      # base-href gained the /app/ segment when the prototype took the root.
       - name: flutter build web
+        working-directory: matchservice-app
         run: >
           flutter build web --release
-          --base-href /vibematch/
+          --base-href /vibematch/app/
           --dart-define=API_BASE_URL=${{ vars.API_BASE_URL || 'https://vibematch-production-ea5b.up.railway.app' }}
+
+      - name: Assemble the site
+        run: |
+          mkdir -p site/app
+          cp demo/tracao-continua.html site/index.html
+          cp -r matchservice-app/build/web/. site/app/
+          test -s site/index.html
+          test -s site/app/index.html
+          echo "--- site/ ---" && ls site && echo "--- site/app/ ---" && ls site/app | head
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: matchservice-app/build/web
+          path: site
 
       - id: deployment
         uses: actions/deploy-pages@v4
