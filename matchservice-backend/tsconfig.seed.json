@@ -1,0 +1,26 @@
+{
+  // The prisma/*.ts console scripts are deliberately outside tsconfig.json
+  // (which is scoped to src/ so its rootDir holds). That left them unchecked
+  // by CI's typecheck step: `build:seed-ai-courses` broke when a fifth
+  // constructor argument was added to AiFactoryService, and the only thing
+  // that noticed was the Docker image build — the last and slowest step in
+  // the run. This config typechecks them and emits nothing, so the same
+  // class of break surfaces in seconds instead.
+  //
+  // The flags below mirror what the `build:seed*` scripts pass on the command
+  // line, so a green run here means those four scripts compile. Keep them in
+  // sync: a flag added there but not here reopens the same blind spot.
+  "compilerOptions": {
+    "noEmit": true,
+    "module": "commonjs",
+    "target": "ES2021",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["prisma/**/*.ts"],
+  "exclude": ["node_modules", "dist", "dist-seed"]
+}

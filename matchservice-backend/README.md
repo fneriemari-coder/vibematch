@@ -32,12 +32,16 @@ docker-compose up -d --build
 ## Verifying the build
 
 ```bash
-npx tsc --noEmit -p tsconfig.json   # type-check only
-npm run build                       # full Nest build (dist/)
+npm run typecheck         # type-check src/ only
+npm run typecheck:seeds   # type-check the prisma/*.ts console scripts
+npm run build             # full Nest build (dist/)
 ```
 
-Both were run against the current source tree with zero errors as of the
-last change in this repo.
+`typecheck` is scoped to `src/`, which is why `typecheck:seeds` exists: the
+`prisma/*.ts` scripts compile through their own `build:seed*` commands, and
+before that second check they were only ever validated inside the Docker
+image build — the last and slowest step in CI. All three were run against the
+current source tree with zero errors as of the last change in this repo.
 
 ## Module map
 
@@ -88,8 +92,13 @@ adapter can be added later without new infra.
 
 ## Known gaps / things not yet wired
 
-- No automated test suite (`npm test` runs Jest but no spec files exist yet)
-  beyond the manual moderation stress test above.
+- Coverage is uneven rather than absent: `npm test` runs 27 Jest suites over
+  the score engine, escrow, the Stripe webhook (including idempotency),
+  anti-fraud, media, academy, diagnostics and the crypto/pagination
+  utilities — CI runs them on every push. What has no automated coverage is
+  the HTTP layer: there are no e2e/controller specs, so guards, DTO
+  validation and status codes are only exercised by hand and by the
+  moderation stress test above.
 - `/billing/checkout` assumes the four `STRIPE_PRICE_*` env vars are real
   Stripe Price IDs — nothing works against Stripe until those (and
   `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`) are filled in.

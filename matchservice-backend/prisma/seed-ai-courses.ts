@@ -6,6 +6,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { S3StorageService } from '../src/common/storage/s3-storage.service';
 import { PrismaService } from '../src/common/prisma/prisma.service';
 import { AiFactoryService } from '../src/modules/academy/ai-factory.service';
+import { CourseCoverService } from '../src/modules/academy/course-cover.service';
 import { AI_COURSE_TOPICS, ComposedTopic } from '../src/modules/academy/ai-course-composer';
 
 // The Nest ConfigService reads process.env, which nothing has populated when
@@ -104,11 +105,16 @@ async function main() {
   const storage = new S3StorageService(config);
   // AiFactoryService only ever uses PrismaService as a PrismaClient; outside
   // Nest there is no injector, so the concrete client is passed directly.
+  // Same three dependencies the seed already holds. Constructing it here
+  // rather than letting Nest do it also skips its OnModuleInit cover-backfill
+  // — this script publishes the covers for the courses it creates itself.
+  const courseCovers = new CourseCoverService(prisma as unknown as PrismaService, config, storage);
   const factory = new AiFactoryService(
     prisma as unknown as PrismaService,
     config,
     storage,
     new EventEmitter2(),
+    courseCovers,
   );
 
   const useModel = Boolean(process.env.OPENAI_API_KEY);

@@ -5,6 +5,8 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck:seeds": "tsc --noEmit -p tsconfig.seed.json",
     "build": "nest build",
     "start": "nest start",
     "start:dev": "nest start --watch",
